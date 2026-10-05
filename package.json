@@ -2,6 +2,7 @@
   "name": "mark",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Mark - a small, fast markdown reader",
   "scripts": {
