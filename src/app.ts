@@ -1,12 +1,12 @@
 import { Viewer } from "./viewer";
 import { SettingsPanel } from "./settings";
 import { getFileService, blobToLoaded } from "./files";
-import { getSettings, updateSettings, onSettings, pushRecent } from "./store";
+import { getSettings, updateSettings, onSettings, pushRecent, getPosition, setPosition } from "./store";
 import { applySettings, resolvedMode } from "./themes";
 import { rebuildRenderers } from "./renderer";
 import { isTauri } from "./platform";
 import { el, debounce, basename } from "./util";
-import type { LoadedFile } from "./types";
+import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, type LoadedFile } from "./types";
 
 export class App {
   private viewer = new Viewer();
@@ -24,10 +24,22 @@ export class App {
   private dropOverlay: HTMLElement;
   private toastEl: HTMLElement;
 
+  /** Key of the open document (path, or name in browser mode) — for position memory. */
+  private currentKey = "";
+
+  /** Re-rendering replaces the document's innerHTML, which collapses the scroll
+   *  container and drops the reader back to the top. Every settings change and
+   *  slider drag routes through here, so the position is restored around it. */
   private rerender = debounce(() => {
+    const top = this.workspace.scrollTop;
     rebuildRenderers();
     this.viewer.rerender();
+    this.workspace.scrollTop = top;
   }, 120);
+
+  private savePosition = debounce(() => {
+    if (this.currentKey) setPosition(this.currentKey, this.workspace.scrollTop);
+  }, 400);
 
   constructor() {
     this.chrome = el("header", { class: "chrome", "data-tauri-drag-region": "" }, []);
@@ -173,6 +185,7 @@ export class App {
     });
 
     window.addEventListener("keydown", (e) => this.onKey(e));
+    this.workspace.addEventListener("scroll", this.savePosition);
 
     // Browser drag & drop (Tauri uses native events below).
     this.workspace.addEventListener("dragover", (e) => {
@@ -242,6 +255,15 @@ export class App {
     } else if (mod && e.key.toLowerCase() === "p") {
       e.preventDefault();
       window.print();
+    } else if (mod && (e.key === "+" || e.key === "=")) {
+      e.preventDefault();
+      this.zoom(1);
+    } else if (mod && e.key === "-") {
+      e.preventDefault();
+      this.zoom(-1);
+    } else if (mod && e.key === "0") {
+      e.preventDefault();
+      this.zoom(0);
     } else if (e.key === "Escape") {
       this.panel.setOpen(false);
       this.recentMenu.classList.remove("open");
@@ -267,21 +289,44 @@ export class App {
   }
 
   private async showFile(f: LoadedFile): Promise<void> {
+    // Flush the outgoing document's position before the key changes under us.
+    if (this.currentKey) setPosition(this.currentKey, this.workspace.scrollTop);
+
     this.viewer.render(f);
     this.emptyState.classList.add("hidden");
     this.viewer.root.hidden = false;
     this.fileInfo.textContent = f.name;
     this.fileInfo.setAttribute("title", f.path || f.name);
     document.title = f.name + " \u00b7 Mark";
-    this.workspace.scrollTop = 0;
-    pushRecent(f.path || f.name);
+
+    this.currentKey = f.path || f.name;
+    pushRecent(this.currentKey);
     this.refreshRecentUI();
+
+    // Resume where this file was left off. rAF because the debounced re-render
+    // above (and late font/math layout) can still change the height; the scroll
+    // assignment clamps to whatever the container can hold at that moment.
+    const top = getPosition(this.currentKey);
+    this.workspace.scrollTop = 0;
+    requestAnimationFrame(() => {
+      this.workspace.scrollTop = top;
+    });
   }
 
   private toggleTheme(): void {
     const dark = resolvedMode(getSettings().mode) === "dark";
     updateSettings({ mode: dark ? "light" : "dark" });
     this.refreshThemeIcon();
+  }
+
+  /** Ctrl +/− scale the reading size, Ctrl+0 resets. Reuses the fontSize setting
+   *  (and its panel slider) rather than introducing a second scale factor, so the
+   *  two controls can never disagree. step 0 = reset to default. */
+  private zoom(step: number): void {
+    const { fontSize } = getSettings();
+    const next = step === 0 ? DEFAULT_SETTINGS.fontSize : fontSize + step;
+    const clamped = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, next));
+    if (clamped !== fontSize) updateSettings({ fontSize: clamped });
   }
 
   private themeIcon(): string {

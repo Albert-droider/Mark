@@ -1,5 +1,5 @@
 import type { Settings } from "./types";
-import { DEFAULT_SETTINGS, FONT_PRESETS, CODE_FONT_PRESETS } from "./types";
+import { DEFAULT_SETTINGS, FONT_PRESETS, CODE_FONT_PRESETS, FONT_SIZE_MIN, FONT_SIZE_MAX } from "./types";
 import { THEMES } from "./themes";
 import { getSettings, updateSettings, setSettings, onSettings } from "./store";
 import { el } from "./util";
@@ -58,7 +58,7 @@ export class SettingsPanel {
       this.section("Typography", [
         this.fontField("fontFamily", "Body font", FONT_PRESETS, s.fontFamily),
         this.fontField("codeFontFamily", "Code font", CODE_FONT_PRESETS, s.codeFontFamily),
-        this.sliderField("fontSize", "Font size", 12, 26, 1, s.fontSize, "px"),
+        this.sliderField("fontSize", "Font size", FONT_SIZE_MIN, FONT_SIZE_MAX, 1, s.fontSize, "px"),
         this.sliderField("lineHeight", "Line height", 1.2, 2.4, 0.05, s.lineHeight, ""),
         this.sliderField("contentWidth", "Content width", 560, 1600, 10, s.contentWidth, "px"),
         this.sliderField("padding", "Padding", 0, 80, 1, s.padding, "px"),

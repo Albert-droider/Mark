@@ -58,3 +58,34 @@ export function pushRecent(path: string): void {
   const recent = [path, ...current.recent.filter((p) => p !== path)].slice(0, 25);
   updateSettings({ recent });
 }
+
+const POS_KEY = "mark.positions.v1";
+
+/**
+ * Reading position per file, deliberately kept OUT of Settings: updateSettings
+ * notifies listeners, and App's listener re-renders the document — so saving a
+ * scroll offset through Settings would rebuild the whole document mid-read.
+ */
+export function getPosition(key: string): number {
+  if (!key) return 0;
+  try {
+    const all = JSON.parse(localStorage.getItem(POS_KEY) || "{}") as Record<string, number>;
+    return typeof all[key] === "number" ? all[key] : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setPosition(key: string, top: number): void {
+  if (!key) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(POS_KEY) || "{}") as Record<string, number>;
+    all[key] = Math.max(0, Math.round(top));
+    // Drop files that fell out of `recent` so this map cannot grow forever.
+    const keep = new Set(current.recent);
+    for (const k of Object.keys(all)) if (!keep.has(k) && k !== key) delete all[k];
+    localStorage.setItem(POS_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable; ignore */
+  }
+}

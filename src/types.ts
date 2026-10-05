@@ -52,6 +52,10 @@ export interface Settings {
   recent: string[];
 }
 
+/** Font-size bounds in px — shared by the settings slider and the Ctrl +/- shortcuts. */
+export const FONT_SIZE_MIN = 12;
+export const FONT_SIZE_MAX = 26;
+
 export const FONT_PRESETS: { id: string; name: string; stack: string }[] = [
   { id: "system", name: "System UI", stack: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' },
   { id: "sans", name: "Sans (Inter-like)", stack: '"Segoe UI", system-ui, Arial, sans-serif' },
