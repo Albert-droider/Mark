@@ -55,9 +55,33 @@ body {
   border-bottom: 1px solid var(--chrome-border);
   position: relative;
   z-index: 30;
-  -webkit-app-region: drag;
 }
+/* The OS title bar is off (tauri.conf.json → decorations:false), so this header is
+   the drag handle: Tauri only honours the data-tauri-drag-region attribute, not
+   -webkit-app-region (that one is Electron-only and does nothing here). Every
+   non-button child of the bar needs the attribute, since Tauri tests the event
+   target and not its ancestors. */
 .chrome button, .chrome .recent-menu { -webkit-app-region: no-drag; }
+
+.window-controls {
+  display: flex;
+  align-self: stretch;
+  margin: 0 -12px 0 4px;
+}
+.win-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--chrome-fg);
+  width: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0;
+}
+.win-btn:hover { background: color-mix(in srgb, var(--chrome-fg) 12%, transparent); }
+.win-btn.win-close:hover { background: #e81123; color: #fff; }
 
 .brand {
   display: flex;

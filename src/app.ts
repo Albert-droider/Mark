@@ -30,7 +30,7 @@ export class App {
   }, 120);
 
   constructor() {
-    this.chrome = el("header", { class: "chrome" }, []);
+    this.chrome = el("header", { class: "chrome", "data-tauri-drag-region": "" }, []);
     this.workspace = el("main", { class: "workspace" }, []);
     this.dropOverlay = el("div", { class: "drop-overlay", "aria-hidden": "true" }, [
       el("div", { class: "drop-card" }, [el("div", { class: "drop-icon" }, ["\u2193"]), el("div", {}, ["Drop a file to open"])]),
@@ -38,7 +38,7 @@ export class App {
     this.toastEl = el("div", { class: "toast", role: "status", "aria-live": "polite" }, []);
     this.toastEl.hidden = true;
 
-    this.fileInfo = el("div", { class: "file-info", title: "" }, ["Mark"]);
+    this.fileInfo = el("div", { class: "file-info", title: "", "data-tauri-drag-region": "" }, ["Mark"]);
     this.recentBtn = el("button", { class: "icon-btn recent-btn", title: "Recent files (R)", "aria-label": "Recent files" }, ["Recent"]);
     this.recentMenu = el("div", { class: "recent-menu" }, []);
     this.themeBtn = el("button", { class: "icon-btn theme-btn", title: "Toggle theme (Ctrl+Shift+T)", "aria-label": "Toggle theme" }, [this.themeIcon()]);
@@ -60,12 +60,39 @@ export class App {
   }
 
   private buildChrome(): void {
-    const brand = el("div", { class: "brand" }, [el("span", { class: "brand-mark" }, ["M"]), el("span", {}, ["Mark"])]);
-    const spacer = el("div", { class: "spacer" }, []);
+    const brand = el("div", { class: "brand", "data-tauri-drag-region": "" }, [
+      el("span", { class: "brand-mark", "data-tauri-drag-region": "" }, ["M"]),
+      el("span", { "data-tauri-drag-region": "" }, ["Mark"]),
+    ]);
+    const spacer = el("div", { class: "spacer", "data-tauri-drag-region": "" }, []);
     const openBtn = el("button", { class: "btn primary open-btn", title: "Open file (Ctrl+O)" }, ["Open"]);
     openBtn.addEventListener("click", () => this.openPicker());
     this.chrome.append(brand, this.fileInfo, spacer, this.recentBtn, openBtn, this.themeBtn, this.settingsBtn);
+    if (isTauri) this.chrome.append(this.buildWindowControls());
     this.chrome.append(this.recentMenu);
+  }
+
+  /** Custom window buttons: with `decorations: false` the OS bar is gone, so the
+   *  app has to offer drag/minimize/maximize/close itself or the window is stuck. */
+  private buildWindowControls(): HTMLElement {
+    const icons = {
+      min: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor"/></svg>',
+      max: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>',
+      close: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor"/></svg>',
+    };
+    const wrap = el("div", { class: "window-controls" }, []);
+    const add = (kind: keyof typeof icons, title: string, run: (w: ReturnType<typeof import("@tauri-apps/api/window")["getCurrentWindow"]>) => Promise<void>) => {
+      const b = el("button", { class: `win-btn win-${kind}`, title, "aria-label": title, type: "button" }, []);
+      b.innerHTML = icons[kind];
+      b.addEventListener("click", () => {
+        void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => run(getCurrentWindow()));
+      });
+      wrap.append(b);
+    };
+    add("min", "Minimize", (w) => w.minimize());
+    add("max", "Maximize", (w) => w.toggleMaximize());
+    add("close", "Close", (w) => w.close());
+    return wrap;
   }
 
   private buildEmptyState(): HTMLElement {
