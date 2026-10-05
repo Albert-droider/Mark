@@ -64,7 +64,7 @@ LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./target/debug/mark
 
 Open **Settings** (gear, top-right, or `Ctrl+,`). Change theme, mode, fonts, font size, line height, content width, padding, accent color, and — when "Custom" is selected — every page color. Toggle auto-linking, smart quotes, emoji, math, and task lists. Everything persists.
 
-Shortcuts: `Ctrl/Cmd+O` open · `Ctrl/Cmd+,` settings · `Ctrl/Cmd+Shift+T` toggle theme · `Esc` close panel.
+Shortcuts: `Ctrl/Cmd+O` open · `Ctrl/Cmd+,` settings · `Ctrl/Cmd+Shift+T` toggle theme · `Ctrl/Cmd+P` print / save as PDF · `Esc` close panel.
 
 ## Project structure
 

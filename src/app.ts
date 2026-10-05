@@ -239,6 +239,9 @@ export class App {
     } else if (mod && e.shiftKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
       this.toggleTheme();
+    } else if (mod && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      window.print();
     } else if (e.key === "Escape") {
       this.panel.setOpen(false);
       this.recentMenu.classList.remove("open");
