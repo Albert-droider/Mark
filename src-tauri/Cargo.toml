@@ -1,0 +1,27 @@
+[package]
+name = "mark"
+version = "0.1.0"
+description = "Mark - a small, fast markdown reader"
+authors = ["Mark"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "mark_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# This feature is used for production builds where `devtools` is not wanted.
+custom-protocol = ["tauri/custom-protocol"]
