@@ -2,6 +2,7 @@ use std::fs;
 use std::sync::Mutex;
 
 use tauri::{Emitter, Manager};
+use tauri_plugin_window_state::StateFlags;
 
 /// Holds a file path passed on the command line at launch (for OS file
 /// association / "open with" on first launch).
@@ -39,7 +40,15 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_window_state::Builder::new().build())
+        // DECORATIONS is deliberately excluded: this app declares decorations:false in
+        // tauri.conf.json and draws its own title bar. The plugin's saved state is
+        // restored on launch, so a "decorated: true" written by an earlier run would
+        // silently put the native title bar back on top of the custom one.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::all() & !StateFlags::DECORATIONS)
+                .build(),
+        )
         .manage(InitialPath(Mutex::new(initial)))
         .invoke_handler(tauri::generate_handler![read_text_file, initial_path])
         .run(tauri::generate_context!())
