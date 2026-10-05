@@ -232,25 +232,30 @@ body {
 .empty-state.hidden { display: none; }
 .empty-card {
   text-align: center;
-  max-width: 440px;
+  max-width: 460px;
   color: var(--fg);
 }
+/* A wordmark, not an app badge. The rounded blue square + centred logo + tagline is
+   the universal "generic file viewer" splash; a serif letter over a hairline rule
+   reads as a title page instead. */
 .empty-logo {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  border-radius: 16px;
-  background: var(--accent);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 800;
+  width: 84px;
+  height: auto;
+  margin: 0 auto 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--heading);
+  display: block;
+  font-size: 68px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
-.empty-card h1 { margin: 0 0 4px; font-size: 1.6em; color: var(--heading); }
-.empty-sub { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
-.empty-hint { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+.empty-card h1 { margin: 0 0 6px; font-size: 2.3em; font-weight: 600; letter-spacing: -0.025em; color: var(--heading); }
+.empty-sub { margin: 0 0 26px; color: var(--muted); font-size: 15px; }
+.empty-hint { color: var(--muted); font-size: 15px; margin: 0 0 30px; }
 .empty-recent { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .empty-recent-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 0 6px; }
 .empty-recent-none { color: var(--muted); font-size: 13px; }

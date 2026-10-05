@@ -12,7 +12,16 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULT_SETTINGS);
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return merge(DEFAULT_SETTINGS, parsed);
+    const merged = merge(DEFAULT_SETTINGS, parsed);
+    // v2 introduced the house theme + serif body font. A stored v1 blob would keep
+    // the old github-light/system-ui defaults, so the new look would never reach
+    // anyone who had already opened the app. Applies once.
+    if ((parsed.version ?? 1) < 2) {
+      merged.themeId = DEFAULT_SETTINGS.themeId;
+      merged.fontFamily = DEFAULT_SETTINGS.fontFamily;
+      merged.version = DEFAULT_SETTINGS.version;
+    }
+    return merged;
   } catch {
     return structuredClone(DEFAULT_SETTINGS);
   }

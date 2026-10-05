@@ -72,10 +72,10 @@ export const CODE_FONT_PRESETS: { id: string; name: string; stack: string }[] = 
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
-  version: 1,
-  themeId: "github-light",
+  version: 2,
+  themeId: "mark",
   mode: "system",
-  fontFamily: FONT_PRESETS[0].stack,
+  fontFamily: FONT_PRESETS[2].stack,
   codeFontFamily: CODE_FONT_PRESETS[0].stack,
   fontSize: 16,
   lineHeight: 1.7,

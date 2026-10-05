@@ -13,6 +13,21 @@ export interface ThemePreset {
  */
 export const THEMES: ThemePreset[] = [
   {
+    id: "mark",
+    name: "Mark (paper)",
+    mode: "light",
+    vars: {
+      "--bg": "#fbfaf7", "--fg": "#221f1a", "--heading": "#14110d",
+      "--link": "#1a5fb4", "--muted": "#7a7266", "--border": "#e4dfd5",
+      "--code-bg": "#f1ede5", "--code-block-bg": "#f6f3ec",
+      "--quote": "#5d564b", "--chrome-bg": "#f4f1ea", "--chrome-fg": "#221f1a",
+      "--chrome-border": "#e4dfd5", "--select": "rgba(26,95,180,0.16)",
+      "--syn-keyword": "#a6262c", "--syn-string": "#3d5a2a", "--syn-comment": "#9a9184",
+      "--syn-number": "#1a5fb4", "--syn-fn": "#6b3fa0", "--syn-type": "#8a5a12",
+      "--syn-attr": "#1a5fb4", "--syn-tag": "#3d5a2a", "--syn-punct": "#7a7266",
+    },
+  },
+  {
     id: "github-light",
     name: "GitHub Light",
     mode: "light",
