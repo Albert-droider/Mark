@@ -13,6 +13,8 @@ A small, fast, customizable **markdown reader** for the desktop — built with T
 - Heading anchors, sanitized HTML (DOMPurify) for safety
 - Drag-and-drop, recent files, external links open in your browser
 - Reader highlights: select text, pick one of three colors, click a mark to remove it — stored per file
+- Workspace sidebar (Ctrl+B): point Mark at a folder and every `.md`/`.txt` in it is one click away, grouped by subfolder
+- Audio bar: if the open document has an mp3/m4a/wav next to it (or in an `audio/` folder beside it), a player shows up for reading along
 - Remembers your reading position per file, and resumes there when you reopen it
 - Deep customization: 10 themes + custom colors, light/dark/auto, fonts, sizes, accent
 - Remembers window size/position; single-instance + OS file association (open `.md` files with Mark)

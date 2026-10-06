@@ -50,6 +50,8 @@ export interface Settings {
   render: RenderOptions;
   /** Recent file paths (Tauri) or names (browser). */
   recent: string[];
+  /** Workspace folder whose documents the sidebar lists. Empty = none chosen. */
+  workspace: string;
 }
 
 /** Font-size bounds in px — shared by the settings slider and the Ctrl +/- shortcuts. */
@@ -101,4 +103,5 @@ export const DEFAULT_SETTINGS: Settings = {
     linkTarget: "blank",
   },
   recent: [],
+  workspace: "",
 };

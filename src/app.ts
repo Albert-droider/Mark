@@ -1,5 +1,7 @@
 import { Viewer } from "./viewer";
 import { SettingsPanel } from "./settings";
+import { Sidebar, SIDEBAR_OPEN_KEY } from "./sidebar";
+import { AudioBar } from "./audioplayer";
 import { getFileService, blobToLoaded } from "./files";
 import { getSettings, updateSettings, onSettings, pushRecent, getPosition, setPosition } from "./store";
 import { applySettings, resolvedMode } from "./themes";
@@ -11,6 +13,11 @@ import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, type LoadedFile } from 
 export class App {
   private viewer = new Viewer();
   private panel = new SettingsPanel();
+  private audioBar = new AudioBar();
+
+  private sidebar: Sidebar;
+  private bodyRow: HTMLElement;
+  private sidebarBtn: HTMLElement;
 
   private chrome: HTMLElement;
   private fileInfo: HTMLElement;
@@ -44,6 +51,11 @@ export class App {
   constructor() {
     this.chrome = el("header", { class: "chrome", "data-tauri-drag-region": "" }, []);
     this.workspace = el("main", { class: "workspace" }, []);
+    this.sidebar = new Sidebar(
+      (path) => void this.openPath(path),
+      (root) => updateSettings({ workspace: root }),
+    );
+    this.bodyRow = el("div", { class: "body-row" }, [this.sidebar.root, this.workspace]);
     this.dropOverlay = el("div", { class: "drop-overlay", "aria-hidden": "true" }, [
       el("div", { class: "drop-card" }, [el("div", { class: "drop-icon" }, ["\u2193"]), el("div", {}, ["Drop a file to open"])]),
     ]);
@@ -55,6 +67,7 @@ export class App {
     this.recentMenu = el("div", { class: "recent-menu" }, []);
     this.themeBtn = el("button", { class: "icon-btn theme-btn", title: "Toggle theme (Ctrl+Shift+T)", "aria-label": "Toggle theme" }, [this.themeIcon()]);
     this.settingsBtn = el("button", { class: "icon-btn settings-btn", title: "Settings (Ctrl+,)", "aria-label": "Settings" }, ["\u2699"]);
+    this.sidebarBtn = el("button", { class: "icon-btn sidebar-btn", title: "Workspace (Ctrl+B)", "aria-label": "Workspace" }, ["\u2630"]);
 
     this.emptyState = this.buildEmptyState();
 
@@ -63,11 +76,22 @@ export class App {
   }
 
   mount(parent: HTMLElement): void {
-    parent.append(this.chrome, this.workspace, this.panel.root, this.dropOverlay, this.toastEl);
+    parent.append(this.chrome, this.bodyRow, this.audioBar.root, this.panel.root, this.dropOverlay, this.toastEl);
     this.workspace.append(this.emptyState, this.viewer.root);
     applySettings(getSettings());
     this.refreshThemeIcon();
-    if (!isTauri) this.recentBtn.classList.add("hidden");
+    if (!isTauri) {
+      this.recentBtn.classList.add("hidden");
+      this.sidebarBtn.classList.add("hidden");
+      this.sidebar.root.classList.add("hidden");
+    } else {
+      const root = getSettings().workspace;
+      if (root) {
+        void this.sidebar.setWorkspace(root);
+        // First run with a workspace: show it. After that the user's own toggle wins.
+        if (localStorage.getItem(SIDEBAR_OPEN_KEY) === null) this.sidebar.setOpen(true);
+      }
+    }
     this.wireTauri();
   }
 
@@ -79,7 +103,7 @@ export class App {
     const spacer = el("div", { class: "spacer", "data-tauri-drag-region": "" }, []);
     const openBtn = el("button", { class: "btn primary open-btn", title: "Open file (Ctrl+O)" }, ["Open"]);
     openBtn.addEventListener("click", () => this.openPicker());
-    this.chrome.append(brand, this.fileInfo, spacer, this.recentBtn, openBtn, this.themeBtn, this.settingsBtn);
+    this.chrome.append(this.sidebarBtn, brand, this.fileInfo, spacer, this.recentBtn, openBtn, this.themeBtn, this.settingsBtn);
     if (isTauri) this.chrome.append(this.buildWindowControls());
     this.chrome.append(this.recentMenu);
   }
@@ -165,6 +189,7 @@ export class App {
 
   private wire(): void {
     this.settingsBtn.addEventListener("click", () => this.panel.toggle());
+    this.sidebarBtn.addEventListener("click", () => this.sidebar.toggle());
     this.themeBtn.addEventListener("click", () => this.toggleTheme());
     this.recentBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -249,6 +274,9 @@ export class App {
     } else if (mod && e.key === ",") {
       e.preventDefault();
       this.panel.toggle();
+    } else if (mod && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      this.sidebar.toggle();
     } else if (mod && e.shiftKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
       this.toggleTheme();
@@ -302,6 +330,8 @@ export class App {
     this.currentKey = f.path || f.name;
     pushRecent(this.currentKey);
     this.refreshRecentUI();
+    this.sidebar.setActive(this.currentKey);
+    void this.audioBar.setDocument(f.path);
 
     // Resume where this file was left off. rAF because the debounced re-render
     // above (and late font/math layout) can still change the height; the scroll
