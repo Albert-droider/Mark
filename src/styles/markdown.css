@@ -263,3 +263,29 @@
   word-break: break-word;
   color: var(--fg);
 }
+
+/* Reader highlights ------------------------------------------------------- */
+/* Marks the reader put there by hand (src/highlights.ts). Semantic <mark> would
+   be bold-yellow by default; these are muted and get forced into print, because
+   a printed chapter should keep the marks the reader made. */
+.markdown-body mark.hl {
+  background: var(--hl-yellow);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.markdown-body mark.hl-green { background: var(--hl-green); }
+.markdown-body mark.hl-pink { background: var(--hl-pink); }
+
+:root {
+  --hl-yellow: #ffe680;
+  --hl-green: #b9f0b0;
+  --hl-pink: #ffc9e0;
+}
+html[data-mode="dark"] {
+  --hl-yellow: #7a6414;
+  --hl-green: #235c33;
+  --hl-pink: #6d2246;
+}

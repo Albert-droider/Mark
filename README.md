@@ -12,6 +12,7 @@ A small, fast, customizable **markdown reader** for the desktop — built with T
 - Collapsible `:::details` blocks
 - Heading anchors, sanitized HTML (DOMPurify) for safety
 - Drag-and-drop, recent files, external links open in your browser
+- Reader highlights: select text, pick one of three colors, click a mark to remove it — stored per file
 - Remembers your reading position per file, and resumes there when you reopen it
 - Deep customization: 10 themes + custom colors, light/dark/auto, fonts, sizes, accent
 - Remembers window size/position; single-instance + OS file association (open `.md` files with Mark)

@@ -492,6 +492,49 @@ body {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* Selection toolbar (highlights) ------------------------------------------ */
+/* Floats over the text at the selection; both children are icon-sized so the
+   pill never becomes a second toolbar the reader has to aim at. */
+.hl-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
+}
+.hl-toolbar[hidden] { display: none; }
+.hl-toolbar.below { transform: translate(-50%, 0); }
+.hl-toolbar.only-remove .hl-swatch { display: none; }
+.hl-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.hl-swatch.hl-yellow { background: var(--hl-yellow); }
+.hl-swatch.hl-green { background: var(--hl-green); }
+.hl-swatch.hl-pink { background: var(--hl-pink); }
+.hl-swatch:hover { transform: scale(1.15); }
+.hl-remove {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.hl-remove:hover { color: var(--fg); }
+
 /* Utility ---------------------------------------------------------------- */
 .hidden { display: none !important; }
 
@@ -542,6 +585,9 @@ body {
 
   /* <details> prints collapsed otherwise — the content is the point. */
   .markdown-body details > *:not(summary) { display: block !important; }
+
+  /* The selection toolbar is interactive chrome, never part of the document. */
+  .hl-toolbar { display: none !important; }
 
   /* Paper has no cursor: show where an external link goes. */
   .markdown-body a[href^="http"]::after {
