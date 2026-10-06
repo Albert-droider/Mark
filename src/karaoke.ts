@@ -235,9 +235,14 @@ export class Karaoke {
 
   private tick(seeked = false): void {
     if (!this.words.length || !this.scope) return;
-    if (seeked) this.cursor = 0;
-    const index = wordIndexAt(this.words, this.times, this.audio.currentTime, this.cursor);
-    this.cursor = index;
+    let index = wordIndexAt(this.words, this.times, this.audio.currentTime, seeked ? 0 : this.cursor);
+    if (index < 0 && this.cursor > 0) {
+      // The clock jumped backwards (scrub, or a `seeking` we never saw): the forward
+      // scan from the old cursor finds nothing, so start over instead of going dark.
+      this.cursor = 0;
+      index = wordIndexAt(this.words, this.times, this.audio.currentTime, 0);
+    }
+    this.cursor = Math.max(0, index);
     const word = this.words[index];
     if (!word || word.spoken < 0) {
       this.clear();

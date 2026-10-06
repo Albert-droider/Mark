@@ -198,6 +198,26 @@ describe("Karaoke", () => {
     expect(set).toHaveBeenCalledTimes(1);
   });
 
+  it("picks the thread back up when the clock jumps backwards", async () => {
+    const scope = document.createElement("div");
+    scope.innerHTML = "<p>Radboud de Eerste.</p>";
+    document.body.append(scope);
+    const audio = document.createElement("audio");
+    const karaoke = new Karaoke(audio, { load: async () => timing });
+    await karaoke.setDocument("D:/ws/h01.md", scope);
+
+    audio.currentTime = 0.8;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(((set.mock.calls[0][1] as { range: Range }).range).toString()).toBe("Eerste");
+
+    // Scrubbing back: the forward scan from the old cursor finds nothing, so the
+    // highlight must not go dark until the next `seeking` event.
+    audio.currentTime = 0.2;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(set).toHaveBeenCalledTimes(2);
+    expect(((set.mock.calls[1][1] as { range: Range }).range).toString()).toBe("Radboud");
+  });
+
   it("does not paint before the timeline is loaded", async () => {
     const scope = document.createElement("div");
     scope.innerHTML = "<p>Radboud de Eerste.</p>";
