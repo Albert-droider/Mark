@@ -7,6 +7,8 @@
 // ("bv." -> "bijvoorbeeld") and the voice sometimes splits a token. So the two
 // lists are aligned by content, never by index.
 
+import { getAudioPrefs } from "./audioprefs";
+
 export interface SpokenWord {
   /** The word as spoken. */
   w: string;
@@ -263,6 +265,7 @@ export class Karaoke {
 
   /** Keep the spoken word on screen, but never yank the reader back while it is visible. */
   private follow(range: Range): void {
+    if (!getAudioPrefs().follow) return;
     const scroller = this.scope?.closest(".workspace") as HTMLElement | null;
     if (!scroller) return;
     const rect = range.getBoundingClientRect();

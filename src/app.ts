@@ -195,6 +195,8 @@ export class App {
   private wire(): void {
     this.settingsBtn.addEventListener("click", () => this.panel.toggle());
     this.sidebarBtn.addEventListener("click", () => this.sidebar.toggle());
+    // The audio bar has no room for an error state of its own.
+    document.addEventListener("mark:toast", (e) => this.toast(String((e as CustomEvent).detail || "")));
     this.themeBtn.addEventListener("click", () => this.toggleTheme());
     this.recentBtn.addEventListener("click", (e) => {
       e.stopPropagation();
