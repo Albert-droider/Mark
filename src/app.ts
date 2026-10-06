@@ -2,6 +2,8 @@ import { Viewer } from "./viewer";
 import { SettingsPanel } from "./settings";
 import { Sidebar, SIDEBAR_OPEN_KEY } from "./sidebar";
 import { AudioBar } from "./audioplayer";
+import { Karaoke } from "./karaoke";
+import { loadTiming } from "./workspace";
 import { getFileService, blobToLoaded } from "./files";
 import { getSettings, updateSettings, onSettings, pushRecent, getPosition, setPosition } from "./store";
 import { applySettings, resolvedMode } from "./themes";
@@ -14,6 +16,8 @@ export class App {
   private viewer = new Viewer();
   private panel = new SettingsPanel();
   private audioBar = new AudioBar();
+  /** Word-for-word follow mode: hangs off the player's clock. */
+  private karaoke = new Karaoke(this.audioBar.audio, { load: loadTiming });
 
   private sidebar: Sidebar;
   private bodyRow: HTMLElement;
@@ -41,6 +45,7 @@ export class App {
     const top = this.workspace.scrollTop;
     rebuildRenderers();
     this.viewer.rerender();
+    this.karaoke.rebuild(this.viewer.root); // new text nodes: re-collect the words
     this.workspace.scrollTop = top;
   }, 120);
 
@@ -332,6 +337,7 @@ export class App {
     this.refreshRecentUI();
     this.sidebar.setActive(this.currentKey);
     void this.audioBar.setDocument(f.path);
+    void this.karaoke.setDocument(f.path, this.viewer.root);
 
     // Resume where this file was left off. rAF because the debounced re-render
     // above (and late font/math layout) can still change the height; the scroll

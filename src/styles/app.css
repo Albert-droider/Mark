@@ -714,3 +714,10 @@ body {
   text-overflow: ellipsis;
 }
 .audio-el { flex: 1 1 auto; height: 32px; }
+
+/* Karaoke: the word being spoken. Painted with the CSS Custom Highlight API, so no
+   element is inserted into the document and reader highlights stay untouched. */
+::highlight(karaoke) {
+  background-color: var(--hl-yellow, #ffe58f);
+  color: var(--fg, #111);
+}

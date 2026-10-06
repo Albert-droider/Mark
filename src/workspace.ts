@@ -50,6 +50,13 @@ export async function findAudio(path: string): Promise<string | null> {
   return await invoke<string | null>("find_audio", { path });
 }
 
+/** The word timeline for a document (`<naam>.words.json`), or null if there is none. */
+export async function loadTiming(path: string): Promise<string | null> {
+  if (!isTauri || !path) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await invoke<string | null>("read_timing", { path });
+}
+
 /** Read an audio file as an object URL. Object URLs are revoked by the caller. */
 export async function audioObjectUrl(path: string): Promise<string> {
   const { invoke } = await import("@tauri-apps/api/core");

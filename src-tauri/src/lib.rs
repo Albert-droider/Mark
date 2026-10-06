@@ -136,6 +136,25 @@ fn read_audio_file(path: String) -> Result<tauri::ipc::Response, String> {
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/// Read the word timeline that belongs to a document (`<naam>.words.json`, next to
+/// the document or in the `audio/` folder next to it). Returns null when there is
+/// none: karaoke is optional, the document still reads fine without it.
+#[tauri::command]
+fn read_timing(path: String) -> Option<String> {
+    let doc = std::path::PathBuf::from(&path);
+    let stem = doc.file_stem()?.to_string_lossy().to_string();
+    let dir = doc.parent()?;
+    for cand in [
+        dir.join(format!("{stem}.words.json")),
+        dir.join("audio").join(format!("{stem}.words.json")),
+    ] {
+        if cand.is_file() {
+            return fs::read_to_string(cand).ok();
+        }
+    }
+    None
+}
+
 /// Return (and clear) a path passed on the command line at startup.
 #[tauri::command]
 fn initial_path(state: tauri::State<InitialPath>) -> Option<String> {
@@ -230,6 +249,7 @@ pub fn run() {
             list_workspace,
             find_audio,
             read_audio_file,
+            read_timing,
             initial_path
         ])
         .run(tauri::generate_context!())
