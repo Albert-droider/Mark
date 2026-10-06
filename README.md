@@ -14,7 +14,7 @@ A small, fast, customizable **markdown reader** for the desktop — built with T
 - Drag-and-drop, recent files, external links open in your browser
 - Reader highlights: select text, pick one of three colors, click a mark to remove it — stored per file
 - Workspace sidebar (Ctrl+B): point Mark at a folder and every `.md`/`.txt` in it is one click away, grouped by subfolder
-- Audio bar: if the open document has an mp3/m4a/wav next to it (or in an `audio/` folder beside it), a player shows up for reading along
+- Audio bar: if the open document has an mp3/m4a/wav next to it (or in an `audio/` folder beside it), a player shows up for reading along — play/pause, ±jumps, a timeline you can drag, speed (0.75-2×), volume, and a *Follow* switch for scrolling along with the spoken word. Preferences persist in `mark.audio.v1`; the reader's own keys (position, highlights, sidebar) stay untouched.
 - Karaoke: when the narration has a word timeline (`<naam>.words.json`), the spoken word is highlighted as it plays, and the page follows along
 - Remembers your reading position per file, and resumes there when you reopen it
 - Deep customization: 10 themes + custom colors, light/dark/auto, fonts, sizes, accent
