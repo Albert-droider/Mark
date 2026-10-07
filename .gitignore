@@ -21,4 +21,9 @@ Thumbs.db
 # (SAMPLE.md is the shipped fixture).
 workspace/
 *.mp3
+*.m4a
 *.wav
+*.ogg
+*.aac
+*.flac
+*.words.json

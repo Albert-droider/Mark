@@ -38,6 +38,7 @@ export class App {
   private turnPrev: HTMLButtonElement;
   private turnNext: HTMLButtonElement;
   private book: Book;
+  private bookIndex = -1;
   private audioBar: AudioBar;
   private karaoke: Karaoke;
   private layoutSwitch: HTMLElement;
@@ -725,6 +726,10 @@ export class App {
   }
 
   private onBook(): void {
+    if (this.book.index !== this.bookIndex) {
+      this.bookIndex = this.book.index;
+      this.viewer.hideNoteTip();
+    }
     this.folio.textContent = this.viewer.file ? this.book.label() : "";
     this.turnPrev.disabled = !this.book.canPrev();
     this.turnNext.disabled = !this.book.canNext();

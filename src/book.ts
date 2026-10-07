@@ -169,7 +169,7 @@ export class Book {
     if ((window.getSelection()?.toString() || "").trim()) return;
     const target = e.target;
     if (!(target instanceof Element)) return;
-    if (target.closest("a, button, summary, input, label")) return;
+    if (target.closest("a, button, summary, input, textarea, select, label, mark.hl")) return;
     const rect = this.sheet.getBoundingClientRect();
     const x = e.clientX - rect.left;
     if (x < rect.width * 0.16) this.prev();

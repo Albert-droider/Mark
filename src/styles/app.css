@@ -904,6 +904,40 @@ button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-in
 .sel-note-btn, .sel-remove, .sel-save { height: 28px; padding: 0 10px; font-size: 12px; }
 .sel-note { display: flex; flex-direction: column; gap: 6px; width: 240px; }
 .sel-note[hidden] { display: none; }
+.note-tip {
+  z-index: 75;
+  max-width: min(240px, calc(100vw - 24px));
+  padding: 5px 8px 6px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.35;
+  user-select: none;
+}
+.note-tip[hidden] { display: none !important; }
+.note-tip[data-color="yellow"] { border-left: 3px solid #e7c56a; }
+.note-tip[data-color="green"] { border-left: 3px solid #8fbf7a; }
+.note-tip[data-color="pink"] { border-left: 3px solid #e0a0b0; }
+.note-tip-kicker {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.note-tip-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  max-height: calc(1.35em * 4);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .sel-note-input {
   width: 100%;
   min-height: 72px;
@@ -1034,7 +1068,7 @@ button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-in
 
   /* Chrome never belongs on paper. */
   .chrome, .settings-panel, .toast, .drop-overlay, .empty-state, .code-copy,
-  .find-bar, .outline, .read-progress, .zoom-toast, .page-turn, .folio, .audio-bar, .sel-pop, .sheet::before, .sheet::after { display: none !important; }
+  .find-bar, .outline, .read-progress, .zoom-toast, .page-turn, .folio, .audio-bar, .sel-pop, .note-tip, .sheet::before, .sheet::after { display: none !important; }
 
   .desk, .book-row, .sheet, .sheet .content {
     display: block !important;

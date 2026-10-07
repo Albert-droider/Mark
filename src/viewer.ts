@@ -19,6 +19,9 @@ import {
   type HighlightColor,
 } from "./highlights";
 
+/** How long a pointer must rest on a noted word before the tag appears. */
+export const NOTE_HOVER_MS = 2000;
+
 /** Owns the rendered document and click interactions inside it. */
 export class Viewer {
   readonly root: HTMLElement;
@@ -40,6 +43,11 @@ export class Viewer {
   private noteInput: HTMLTextAreaElement;
   private pendingRange: Range | null = null;
   private pendingGroup: string | null = null;
+  /** Read-only note tag. Outside the article, so it cannot change page height or catch the wheel. */
+  private tip: HTMLElement;
+  private tipText: HTMLElement;
+  private tipTimer = 0;
+  private tipGroup: string | null = null;
 
   constructor() {
     this.root = el("article", {
@@ -54,16 +62,31 @@ export class Viewer {
     this.noteBox = built.noteBox;
     this.noteInput = built.noteInput;
     document.body.append(this.pop);
+    const tip = this.buildTip();
+    this.tip = tip.tip;
+    this.tipText = tip.text;
+    document.body.append(this.tip);
+    this.root.addEventListener("pointerover", this.onMarkOver);
+    this.root.addEventListener("pointermove", this.onMarkMove);
+    this.root.addEventListener("pointerout", this.onMarkOut);
     document.addEventListener("mouseup", this.onMouseUp);
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") this.hidePop();
+      if (e.key === "Escape") {
+        this.hideTip();
+        this.hidePop();
+      }
     });
     document.addEventListener("scroll", (e) => {
+      this.hideTip();
       const target = e.target;
       if (target instanceof Node && this.pop.contains(target)) return;
       this.hidePop();
     }, true);
-    window.addEventListener("resize", () => this.hidePop());
+    window.addEventListener("wheel", () => this.hideTip(), { passive: true, capture: true });
+    window.addEventListener("resize", () => {
+      this.hideTip();
+      this.hidePop();
+    });
   }
 
   private get key(): string {
@@ -85,6 +108,7 @@ export class Viewer {
     this.root.innerHTML = html;
     this.root.hidden = false;
     this.hidePop();
+    this.hideTip();
     applyHighlights(this.root, this.key);
   }
 
@@ -98,6 +122,7 @@ export class Viewer {
     this.root.innerHTML = "";
     this.root.hidden = true;
     this.hidePop();
+    this.hideTip();
   }
 
   /** Draw mermaid fences. Charts and plans are already in the HTML. */
@@ -165,6 +190,20 @@ export class Viewer {
     return { pop, noteBox, noteInput };
   }
 
+  /** A fixed tag on the body. It never sits in the scrolling column or the book. */
+  private buildTip(): { tip: HTMLElement; text: HTMLElement } {
+    const text = el("span", { class: "note-tip-text" }, []);
+    const tip = el("div", { class: "note-tip", role: "tooltip", "aria-hidden": "true" }, [
+      el("span", { class: "note-tip-kicker" }, ["Note"]),
+      text,
+    ]);
+    tip.hidden = true;
+    tip.style.position = "fixed";
+    tip.style.pointerEvents = "none";
+    tip.style.overflow = "hidden";
+    return { tip, text };
+  }
+
   private onMouseUp = (e: MouseEvent): void => {
     if (this.pop.contains(e.target as Node)) return;
     const sel = window.getSelection();
@@ -184,6 +223,7 @@ export class Viewer {
   };
 
   private showPop(rect: DOMRect, existing: boolean): void {
+    this.hideTip();
     this.pop.hidden = false;
     this.pop.classList.toggle("existing", existing);
     const x = Math.min(Math.max(rect.left + rect.width / 2, 120), window.innerWidth - 120);
@@ -198,6 +238,96 @@ export class Viewer {
     this.noteBox.hidden = true;
     this.pendingRange = null;
     this.pendingGroup = null;
+  }
+
+  /** Drop the hover tag. Page turns call this so it does not stay behind on the old spread. */
+  hideNoteTip(): void {
+    this.hideTip();
+  }
+
+  private hideTip(): void {
+    window.clearTimeout(this.tipTimer);
+    this.tipTimer = 0;
+    this.tipGroup = null;
+    this.tip.hidden = true;
+  }
+
+  private onMarkMove = (e: PointerEvent): void => {
+    if (this.tipGroup) return;
+    this.onMarkOver(e);
+  };
+
+  private onMarkOver = (e: PointerEvent): void => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const mark = target.closest("mark.has-note") as HTMLElement | null;
+    if (!mark || !this.root.contains(mark)) return;
+    const group = mark.dataset.hlGroup || "";
+    if (!group || group === this.tipGroup) return;
+    this.armTip(mark, group);
+  };
+
+  private onMarkOut = (e: PointerEvent): void => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const mark = target.closest("mark.has-note") as HTMLElement | null;
+    if (!mark || mark.dataset.hlGroup !== this.tipGroup) return;
+    const next = e.relatedTarget;
+    if (next instanceof Element) {
+      const stay = next.closest("mark.has-note") as HTMLElement | null;
+      if (stay?.dataset.hlGroup === mark.dataset.hlGroup) return;
+    }
+    this.hideTip();
+  };
+
+  private armTip(mark: HTMLElement, group: string): void {
+    window.clearTimeout(this.tipTimer);
+    this.tip.hidden = true;
+    this.tipGroup = group;
+    this.tipTimer = window.setTimeout(() => {
+      this.tipTimer = 0;
+      if (this.tipGroup !== group || !mark.isConnected || !this.pop.hidden) {
+        this.tipGroup = null;
+        return;
+      }
+      const note = groupNote(this.key, group);
+      if (!note) {
+        this.tipGroup = null;
+        return;
+      }
+      this.showTip(mark, note);
+    }, NOTE_HOVER_MS);
+  }
+
+  private showTip(mark: HTMLElement, note: string): void {
+    this.tipText.textContent = note;
+    this.tip.dataset.color = mark.classList.contains("hl-pink")
+      ? "pink"
+      : mark.classList.contains("hl-green")
+        ? "green"
+        : "yellow";
+    this.tip.hidden = false;
+    this.placeTip(mark);
+  }
+
+  /** Pin the tag to the viewport. It is not in the document, so the column does not grow. */
+  private placeTip(mark: HTMLElement): void {
+    const rect = mark.getBoundingClientRect();
+    const marginX = 12;
+    const width = this.tip.offsetWidth;
+    const height = this.tip.offsetHeight;
+    const topSafe = 56;
+    const bottomSafe = 64;
+    let top = rect.top - height - 6;
+    if (top < topSafe) top = rect.bottom + 6;
+    const maxTop = window.innerHeight - height - bottomSafe;
+    if (top > maxTop) top = Math.max(topSafe, maxTop);
+    let left = rect.left;
+    const maxLeft = window.innerWidth - width - marginX;
+    if (left > maxLeft) left = Math.max(marginX, maxLeft);
+    if (left < marginX) left = marginX;
+    this.tip.style.left = `${Math.round(left)}px`;
+    this.tip.style.top = `${Math.round(top)}px`;
   }
 
   private mark(color: HighlightColor): void {
@@ -221,7 +351,7 @@ export class Viewer {
   private openNote(): void {
     this.noteBox.hidden = false;
     this.noteInput.value = this.pendingGroup ? groupNote(this.key, this.pendingGroup) : "";
-    this.noteInput.focus();
+    this.noteInput.focus({ preventScroll: true });
   }
 
   private saveNote(): void {
@@ -259,6 +389,7 @@ export class Viewer {
     const group = groupAt(target);
     if (group) {
       e.preventDefault();
+      e.stopPropagation();
       this.pendingRange = null;
       this.pendingGroup = group;
       const mark = target.closest("mark.hl") as HTMLElement;
