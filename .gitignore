@@ -15,3 +15,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Personal reading material: chapters, audio, notes. Never part of the repo —
+# this is somebody's coursework, not a feature. Keep the app runnable without it
+# (SAMPLE.md is the shipped fixture).
+workspace/
+*.mp3
+*.wav

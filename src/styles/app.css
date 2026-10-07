@@ -1074,6 +1074,9 @@ button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-in
   /* <details> prints collapsed otherwise — the content is the point. */
   .markdown-body details > *:not(summary) { display: block !important; }
 
+  /* The selection toolbar is interactive chrome, never part of the document. */
+  .hl-toolbar { display: none !important; }
+
   /* Paper has no cursor: show where an external link goes. */
   .markdown-body a[href^="http"]::after {
     content: " (" attr(href) ")";

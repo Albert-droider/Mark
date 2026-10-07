@@ -347,6 +347,8 @@
   color: inherit;
   border-radius: 3px;
   padding: 0 0.08em;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .markdown-body mark.hl-green { background: var(--hl-green, #d7e8c8); }
 .markdown-body mark.hl-pink { background: var(--hl-pink, #f3d0d4); }
@@ -366,3 +368,4 @@
   word-break: break-word;
   color: var(--fg);
 }
+
