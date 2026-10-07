@@ -2,7 +2,8 @@
 
 export type ThemeMode = "light" | "dark";
 export type ModePref = "system" | "light" | "dark";
-export type LinkTarget = "self" | "blank";
+/** Document scrolls. Book turns a two-page spread. */
+export type ReadingLayout = "scroll" | "book";
 export type FileKind = "markdown" | "text";
 
 export interface LoadedFile {
@@ -31,14 +32,15 @@ export interface RenderOptions {
   emoji: boolean;
   math: boolean;
   taskLists: boolean;
-  linkTarget: LinkTarget;
 }
 
 export interface Settings {
   version: number;
-  /** Preset id, or "custom". */
+  /** Always the house theme. Older palette ids are folded on load. */
   themeId: string;
   mode: ModePref;
+  /** Scroll the file, or turn it like a book. */
+  layout: ReadingLayout;
   fontFamily: string;
   codeFontFamily: string;
   fontSize: number;
@@ -48,40 +50,31 @@ export interface Settings {
   accent: string;
   custom: CustomColors;
   render: RenderOptions;
-  /** Recent file paths (Tauri) or names (browser). */
-  recent: string[];
 }
 
 /** Font-size bounds in px — shared by the settings slider and the Ctrl +/- shortcuts. */
 export const FONT_SIZE_MIN = 12;
 export const FONT_SIZE_MAX = 26;
 
-export const FONT_PRESETS: { id: string; name: string; stack: string }[] = [
-  { id: "system", name: "System UI", stack: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' },
-  { id: "sans", name: "Sans (Inter-like)", stack: '"Segoe UI", system-ui, Arial, sans-serif' },
-  { id: "serif", name: "Serif (Georgia)", stack: 'Georgia, "Times New Roman", serif' },
-  { id: "mono", name: "Mono (code)", stack: '"Cascadia Code", "JetBrains Mono", Consolas, monospace' },
-];
-
-export const CODE_FONT_PRESETS: { id: string; name: string; stack: string }[] = [
-  { id: "cascadia", name: "Cascadia Code", stack: '"Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, monospace' },
-  { id: "jetbrains", name: "JetBrains Mono", stack: '"JetBrains Mono", "Fira Code", Consolas, monospace' },
-  { id: "fira", name: "Fira Code", stack: '"Fira Code", "JetBrains Mono", Consolas, monospace' },
-  { id: "consolas", name: "Consolas", stack: 'Consolas, "Liberation Mono", monospace' },
-  { id: "mono", name: "System mono", stack: 'ui-monospace, "Cascadia Code", "Source Code Pro", monospace' },
-];
+/** Chrome face. Segoe UI is the system sans that matches the ReUI default on Windows. */
+export const UI_FONT = '"Segoe UI Variable", "Segoe UI", system-ui, sans-serif';
+/** Reading face. Sitka is the Windows book cut and has a real bold, unlike a faux weight. */
+export const READING_FONT = '"Sitka Text", "Palatino Linotype", Georgia, serif';
+/** Code, kbd, and the zoom toast. */
+export const CODE_FONT = '"Cascadia Mono", "Cascadia Code", ui-monospace, Consolas, monospace';
 
 export const DEFAULT_SETTINGS: Settings = {
-  version: 2,
+  version: 3,
   themeId: "mark",
   mode: "system",
-  fontFamily: FONT_PRESETS[2].stack,
-  codeFontFamily: CODE_FONT_PRESETS[0].stack,
+  layout: "scroll",
+  fontFamily: READING_FONT,
+  codeFontFamily: CODE_FONT,
   fontSize: 16,
   lineHeight: 1.7,
   contentWidth: 880,
   padding: 24,
-  accent: "#0969da",
+  accent: "#171717",
   custom: {
     bg: "#ffffff",
     fg: "#1f2328",
@@ -98,7 +91,5 @@ export const DEFAULT_SETTINGS: Settings = {
     emoji: true,
     math: true,
     taskLists: true,
-    linkTarget: "blank",
   },
-  recent: [],
 };

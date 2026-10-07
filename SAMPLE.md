@@ -12,7 +12,7 @@ Emoji: :smile: :rocket: :+1: H~2~O and E=mc^2^.
 
 ## Headings anchor
 
-Click a heading in an outline/URL fragment to jump to it.
+Open Contents to jump to a heading.
 
 ## Lists
 
@@ -84,5 +84,30 @@ Markdown footnotes are supported[^1].
 [^1]: This is the footnote text.
 
 ---
+
+## Chart
+
+```chart
+bar
+title Hours
+Reading | 12
+Notes | 7
+```
+
+## Progress plan
+
+```plan
+title This chapter
+Read | 80
+Notes | 45
+```
+
+## Diagram
+
+```mermaid
+graph LR
+  a[Open] --> b[Read]
+  b --> c[Turn]
+```
 
 That's the tour. Customize the look in **Settings**.

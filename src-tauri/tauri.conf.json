@@ -25,7 +25,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420; img-src 'self' asset: http://asset.localhost data: blob: https:; media-src 'self' blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'",
+      "dangerousDisableAssetCspModification": ["style-src"]
     }
   },
   "bundle": {
@@ -43,10 +44,10 @@
     "longDescription": "Mark is a lightweight desktop markdown reader with full GitHub-flavored parsing, code highlighting, math, and deep appearance customization.",
     "fileAssociations": [
       {
-        "ext": ["md", "markdown", "mdown", "mkd", "mkdn", "mdx"],
+        "ext": ["md", "markdown", "mdown", "mkd", "mkdn"],
         "name": "Markdown",
         "mimeType": "text/markdown",
-        "role": "Editor"
+        "role": "Viewer"
       }
     ]
   }

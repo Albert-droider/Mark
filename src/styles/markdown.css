@@ -6,19 +6,21 @@
 .markdown-body {
   font-family: var(--font);
   font-size: var(--font-size);
+  font-weight: 400;
   line-height: var(--line-height);
   color: var(--fg);
   background: transparent;
   word-wrap: break-word;
   overflow-wrap: break-word;
   -webkit-text-size-adjust: 100%;
+  font-synthesis: weight style;
 }
 
 .markdown-body > *:first-child { margin-top: 0 !important; }
 .markdown-body > *:last-child { margin-bottom: 0 !important; }
 
-/* Anchored headings shouldn't hide behind the fixed top bar. */
-.markdown-body :is(h1, h2, h3, h4, h5, h6)[id] { scroll-margin-top: 64px; }
+/* A little air when a heading is scrolled to the top of the reading column. */
+.markdown-body :is(h1, h2, h3, h4, h5, h6)[id] { scroll-margin-top: 24px; }
 
 /* Headings --------------------------------------------------------------- */
 .markdown-body h1,
@@ -27,28 +29,37 @@
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  margin: 1.6em 0 0.6em;
-  color: var(--heading);
-  font-weight: 650;
-  line-height: 1.3;
+  margin: 1.35em 0 0.45em;
+  color: var(--ink, var(--heading));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  break-after: avoid;
 }
-.markdown-body h1 { font-size: 1.9em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
-.markdown-body h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
-.markdown-body h3 { font-size: 1.25em; }
-.markdown-body h4 { font-size: 1.05em; }
+.markdown-body h1 { font-size: 1.65em; margin-top: 0; }
+.markdown-body h2 { font-size: 1.28em; }
+.markdown-body h3 { font-size: 1.12em; }
+.markdown-body h4 { font-size: 1.02em; }
 .markdown-body h5 { font-size: 0.95em; }
-.markdown-body h6 { font-size: 0.88em; color: var(--muted); }
+.markdown-body h6 { font-size: 0.88em; color: var(--muted); font-weight: 600; }
 
 /* Text ------------------------------------------------------------------- */
-.markdown-body p { margin: 0 0 1em; }
-.markdown-body strong { font-weight: 700; }
+.markdown-body p { margin: 0 0 0.9em; }
+.markdown-body strong,
+.markdown-body b {
+  font-weight: 700;
+  color: var(--ink, var(--heading));
+  letter-spacing: -0.012em;
+}
 .markdown-body em { font-style: italic; }
 .markdown-body del { color: var(--muted); }
 .markdown-body a {
   color: var(--link);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--link) 35%, transparent);
 }
-.markdown-body a:hover { text-decoration: underline; }
+.markdown-body a:hover { text-decoration-color: var(--link); }
 .markdown-body img { max-width: 100%; height: auto; vertical-align: middle; }
 
 /* Lists ------------------------------------------------------------------ */
@@ -65,7 +76,7 @@
   margin: 0 0.5em 0 -1.4em;
   width: 1em;
   height: 1em;
-  accent-color: var(--accent);
+  accent-color: var(--primary, var(--accent));
   vertical-align: middle;
 }
 
@@ -90,6 +101,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: var(--code-block-bg);
+  break-inside: avoid;
 }
 .markdown-body .code-bar {
   display: flex;
@@ -120,6 +132,7 @@
 .markdown-body .code-copy:hover { color: var(--fg); border-color: var(--border); }
 .markdown-body .code-copy.copied { color: var(--accent); }
 .markdown-body .code-pre {
+  max-height: 22rem;
   margin: 0;
   padding: 14px 16px;
   background: var(--code-block-bg);
@@ -179,6 +192,7 @@
 
 /* Tables ----------------------------------------------------------------- */
 .markdown-body table {
+  break-inside: avoid;
   display: block;
   width: max-content;
   max-width: 100%;
@@ -207,6 +221,15 @@
   padding: 0.1em 0.25em;
   border-radius: 3px;
 }
+.markdown-body mark.find-hit {
+  background: color-mix(in srgb, var(--primary, var(--accent)) 18%, transparent);
+  padding: 0 0.08em;
+  border-radius: 2px;
+}
+.markdown-body mark.find-hit.current {
+  background: var(--primary, var(--accent));
+  color: var(--primary-fg, var(--bg));
+}
 .markdown-body kbd {
   display: inline-block;
   padding: 2px 6px;
@@ -232,16 +255,25 @@
 /* Callouts (:::tip etc.) ------------------------------------------------- */
 .markdown-body .callout {
   margin: 0 0 1em;
-  padding: 0.6em 1em;
-  border-left: 0.25em solid var(--accent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: 0.7em 1em;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--hover, transparent);
 }
 .markdown-body .callout-head { font-weight: 700; margin-bottom: 0.3em; text-transform: capitalize; }
 .markdown-body .callout-warning { border-left-color: #d97706; background: color-mix(in srgb, #d97706 12%, transparent); }
 .markdown-body .callout-danger { border-left-color: #dc2626; background: color-mix(in srgb, #dc2626 12%, transparent); }
 .markdown-body .callout-success { border-left-color: #16a34a; background: color-mix(in srgb, #16a34a 12%, transparent); }
 .markdown-body .callout-info { border-left-color: var(--link); background: color-mix(in srgb, var(--link) 10%, transparent); }
+.markdown-body blockquote.callout { color: var(--fg); }
+.markdown-body blockquote.callout::before {
+  content: attr(data-alert);
+  display: block;
+  font-weight: 650;
+  margin-bottom: 0.35em;
+}
+.markdown-body blockquote.callout > p:empty { display: none; margin: 0; }
 
 /* Details (:::details) --------------------------------------------------- */
 .markdown-body details { margin: 0 0 1em; padding: 0.6em 1em; border: 1px solid var(--border); border-radius: 8px; }
@@ -252,6 +284,77 @@
 .markdown-body .katex { font-size: 1.05em; }
 
 /* Plain text (text renderer) -------------------------------------------- */
+/* Diagrams, charts, progress plans -------------------------------------- */
+.markdown-body .artifact {
+  margin: 0 0 1em;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper, var(--bg)) 86%, var(--fg));
+  break-inside: avoid;
+}
+.markdown-body .artifact-label {
+  font-family: var(--ui-font, "Segoe UI", sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.markdown-body .artifact-src { display: none; }
+.markdown-body .artifact-slot { max-height: 24rem; overflow: auto; }
+.markdown-body .artifact-slot svg { max-width: 100%; height: auto; display: block; }
+.markdown-body .artifact-error { margin: 0; color: var(--muted); font-size: 0.9em; }
+.markdown-body .chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+  font-family: var(--ui-font, "Segoe UI", sans-serif);
+  font-size: 12px;
+  color: var(--fg);
+}
+.markdown-body .chart-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.markdown-body .chart-track {
+  height: 8px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink, var(--fg)) 16%, transparent);
+  overflow: hidden;
+}
+.markdown-body .chart-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink, var(--heading));
+}
+.markdown-body .chart-value { font-variant-numeric: tabular-nums; color: var(--ink, var(--heading)); font-weight: 650; }
+.markdown-body .chart-line { width: 100%; height: auto; }
+.markdown-body .chart-line-stroke { fill: none; stroke: var(--ink, var(--heading)); stroke-width: 2; }
+.markdown-body .chart-dot { fill: var(--ink, var(--heading)); }
+.markdown-body .chart-axis { fill: var(--muted); font-size: 10px; font-family: var(--ui-font, "Segoe UI", sans-serif); }
+.markdown-body .chart-pie { display: flex; align-items: center; gap: 16px; }
+.markdown-body .pie { width: 92px; height: 92px; border-radius: 50%; flex: none; }
+.markdown-body .pie-legend { list-style: none; margin: 0; padding: 0; font-family: var(--ui-font, "Segoe UI", sans-serif); font-size: 12px; }
+.markdown-body .pie-legend li { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.markdown-body .pie-legend i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+.markdown-body .pie-legend b { margin-left: auto; font-weight: 650; color: var(--ink, var(--heading)); }
+
+/* Reader marks and notes. The quote stays in the sentence; the note opens from it. */
+.markdown-body mark.hl {
+  background: var(--hl-yellow, #f3e2a4);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.08em;
+}
+.markdown-body mark.hl-green { background: var(--hl-green, #d7e8c8); }
+.markdown-body mark.hl-pink { background: var(--hl-pink, #f3d0d4); }
+.markdown-body mark.has-note {
+  cursor: pointer;
+  box-shadow: inset 0 -1.5px 0 var(--ink, currentColor);
+}
+
 .markdown-body .plain-text {
   margin: 0;
   padding: 0;

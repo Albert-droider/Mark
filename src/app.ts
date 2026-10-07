@@ -1,101 +1,201 @@
+import { Book } from "./book";
+import { AudioBar } from "./audioplayer";
+import { Karaoke } from "./karaoke";
+import { loadTiming } from "./files";
 import { Viewer } from "./viewer";
 import { SettingsPanel } from "./settings";
+import { FindBar } from "./find";
+import { Outline } from "./outline";
+import { ReadingSession } from "./session";
+import { RecentFiles } from "./recent";
 import { getFileService, blobToLoaded } from "./files";
-import { getSettings, updateSettings, onSettings, pushRecent, getPosition, setPosition } from "./store";
+import {
+  getSettings, updateSettings, onSettings, getRecent, pushRecent, removeRecent, forgetPlace,
+} from "./store";
+import type { ReadingPlace } from "./store";
 import { applySettings, resolvedMode } from "./themes";
 import { rebuildRenderers } from "./renderer";
 import { isTauri } from "./platform";
-import { el, debounce, basename } from "./util";
-import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, type LoadedFile } from "./types";
+import { el, debounce, canonicalPath } from "./util";
+import { icon } from "./icons";
+import { matchCommand, shortcutKeys, type CommandId } from "./commands";
+import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, type LoadedFile, type ReadingLayout, type Settings } from "./types";
+
+const WIN_ICONS = {
+  min: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor"/></svg>',
+  max: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>',
+  restore: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 0.5h7v7M0.5 2.5h7v7h-7z" fill="none" stroke="currentColor"/></svg>',
+  close: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor"/></svg>',
+};
 
 export class App {
   private viewer = new Viewer();
   private panel = new SettingsPanel();
+  private workspace: HTMLElement;
+  private desk: HTMLElement;
+  private sheet: HTMLElement;
+  private folio: HTMLElement;
+  private turnPrev: HTMLButtonElement;
+  private turnNext: HTMLButtonElement;
+  private book: Book;
+  private audioBar: AudioBar;
+  private karaoke: Karaoke;
+  private layoutSwitch: HTMLElement;
+  private session: ReadingSession;
+  private outline: Outline;
+  private find: FindBar;
+  private recent: RecentFiles;
 
   private chrome: HTMLElement;
-  private fileInfo: HTMLElement;
-  private recentBtn: HTMLElement;
-  private recentMenu: HTMLElement;
+  private fileBlock: HTMLElement;
+  private fileName: HTMLElement;
+  private fileMeta: HTMLElement;
   private themeBtn: HTMLElement;
   private settingsBtn: HTMLElement;
+  private contentsBtn: HTMLElement;
+  private closeBtn: HTMLElement;
 
-  private workspace: HTMLElement;
+  private progress: HTMLElement;
+  private progressBar: HTMLElement;
   private emptyState: HTMLElement;
   private dropOverlay: HTMLElement;
   private toastEl: HTMLElement;
+  private zoomToast: HTMLElement;
 
-  /** Key of the open document (path, or name in browser mode) — for position memory. */
-  private currentKey = "";
+  private openToken = 0;
+  private renderedRender = JSON.stringify(getSettings().render);
+  private pendingRatio = 0;
+  private zoomTimer = 0;
+  private lastZoom = 0;
 
-  /** Re-rendering replaces the document's innerHTML, which collapses the scroll
-   *  container and drops the reader back to the top. Every settings change and
-   *  slider drag routes through here, so the position is restored around it. */
+  /** Parse-affecting settings rebuild markdown. Appearance only restyles. */
   private rerender = debounce(() => {
-    const top = this.workspace.scrollTop;
+    const ratio = this.pendingRatio;
     rebuildRenderers();
     this.viewer.rerender();
-    this.workspace.scrollTop = top;
+    this.paint(ratio);
   }, 120);
 
-  private savePosition = debounce(() => {
-    if (this.currentKey) setPosition(this.currentKey, this.workspace.scrollTop);
-  }, 400);
-
   constructor() {
+    this.viewer.onOpenFile = (p) => { void this.openPath(p); };
+    this.viewer.onAnchor = (id) => this.scrollToId(id);
+    this.viewer.onNote = (m) => this.toast(m);
+    this.viewer.onMarks = () => {
+      if (this.viewer.file) this.karaoke.rebuild(this.viewer.root);
+    };
+
+    this.workspace = el("main", { class: "workspace", tabindex: "-1" }, []);
+    this.session = new ReadingSession(this.workspace, {
+      hasFile: () => !!this.viewer.file,
+      onChanged: () => { void this.reloadCurrent(); },
+      onMissing: (path) => {
+        this.dropRecent(path);
+        this.toast("This file is no longer available.");
+      },
+    });
+    this.outline = new Outline(this.workspace, {
+      jump: (id) => this.scrollToId(id),
+      changed: () => this.refreshChrome(),
+    });
+    this.find = new FindBar(() => this.viewer.root, (hit) => this.reveal(hit));
+    this.recent = new RecentFiles({
+      openPath: (p) => { void this.openPath(p); },
+      placeKey: () => this.session.key,
+    });
+
     this.chrome = el("header", { class: "chrome", "data-tauri-drag-region": "" }, []);
-    this.workspace = el("main", { class: "workspace" }, []);
+    this.progress = el("div", { class: "read-progress hidden", "aria-hidden": "true" }, []);
+    this.progressBar = el("span", {}, []);
+    this.progress.append(this.progressBar);
+
+    this.fileName = el("span", { class: "file-name" }, []);
+    this.fileMeta = el("span", { class: "file-meta" }, []);
+    this.fileBlock = el("div", { class: "file-block hidden", "data-tauri-drag-region": "" }, [this.fileName, this.fileMeta]);
+    this.themeBtn = el("button", { class: "icon-btn theme-btn", type: "button", title: `Light or dark (${shortcutKeys("theme")})`, "aria-label": "Light or dark" }, [this.themeIcon()]);
+    this.settingsBtn = el("button", { class: "icon-btn settings-btn", type: "button", title: `Settings (${shortcutKeys("settings")})`, "aria-label": "Settings" }, [icon("settings")]);
+    this.contentsBtn = el("button", {
+      class: "icon-btn contents-btn hidden",
+      type: "button",
+      title: `Contents (${shortcutKeys("contents")})`,
+      "aria-label": "Contents",
+      "aria-expanded": "false",
+    }, ["Contents"]);
+    this.closeBtn = el("button", { class: "btn quiet close-file-btn hidden", type: "button", title: `Close file (${shortcutKeys("close")})` }, ["Close"]);
+
     this.dropOverlay = el("div", { class: "drop-overlay", "aria-hidden": "true" }, [
       el("div", { class: "drop-card" }, [el("div", { class: "drop-icon" }, ["\u2193"]), el("div", {}, ["Drop a file to open"])]),
     ]);
     this.toastEl = el("div", { class: "toast", role: "status", "aria-live": "polite" }, []);
     this.toastEl.hidden = true;
-
-    this.fileInfo = el("div", { class: "file-info", title: "", "data-tauri-drag-region": "" }, ["Mark"]);
-    this.recentBtn = el("button", { class: "icon-btn recent-btn", title: "Recent files (R)", "aria-label": "Recent files" }, ["Recent"]);
-    this.recentMenu = el("div", { class: "recent-menu" }, []);
-    this.themeBtn = el("button", { class: "icon-btn theme-btn", title: "Toggle theme (Ctrl+Shift+T)", "aria-label": "Toggle theme" }, [this.themeIcon()]);
-    this.settingsBtn = el("button", { class: "icon-btn settings-btn", title: "Settings (Ctrl+,)", "aria-label": "Settings" }, ["\u2699"]);
+    this.zoomToast = el("div", { class: "zoom-toast", role: "status" }, []);
+    this.zoomToast.hidden = true;
 
     this.emptyState = this.buildEmptyState();
+    const emptyList = this.emptyState.querySelector(".empty-recent");
+    if (emptyList instanceof HTMLElement) this.recent.attachEmpty(emptyList);
+
+    this.turnPrev = el("button", { class: "page-turn", type: "button", "aria-label": "Previous pages" }, ["\u2039"]);
+    this.turnNext = el("button", { class: "page-turn", type: "button", "aria-label": "Next pages" }, ["\u203a"]);
+    this.sheet = el("div", { class: "sheet" });
+    this.folio = el("div", { class: "folio" }, []);
+    this.desk = el("div", { class: "desk" }, [
+      el("div", { class: "book-row" }, [this.turnPrev, this.sheet, this.turnNext]),
+      this.folio,
+    ]);
+    this.sheet.append(this.viewer.root);
+    this.book = new Book(this.sheet, this.viewer.root, () => this.onBook());
+    this.turnPrev.addEventListener("click", () => this.book.prev());
+    this.turnNext.addEventListener("click", () => this.book.next());
+    this.audioBar = new AudioBar();
+    this.karaoke = new Karaoke(this.audioBar.audio, {
+      load: loadTiming,
+      reveal: (el) => this.revealSpoken(el),
+    });
+    this.layoutSwitch = this.buildLayoutSwitch();
 
     this.buildChrome();
     this.wire();
   }
 
   mount(parent: HTMLElement): void {
-    parent.append(this.chrome, this.workspace, this.panel.root, this.dropOverlay, this.toastEl);
-    this.workspace.append(this.emptyState, this.viewer.root);
+    const reading = el("div", { class: "reading" }, [this.outline.root, this.workspace]);
+    parent.append(this.chrome, this.progress, this.find.root, reading, this.audioBar.root, this.panel.root, this.dropOverlay, this.toastEl, this.zoomToast);
+    this.workspace.append(this.emptyState, this.desk);
     applySettings(getSettings());
+    this.applyLayout();
     this.refreshThemeIcon();
-    if (!isTauri) this.recentBtn.classList.add("hidden");
+    this.recent.refresh();
+    this.refreshChrome();
     this.wireTauri();
+    this.watchSystemTheme();
+    window.addEventListener("beforeunload", () => this.session.flush());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.session.flush();
+    });
   }
 
   private buildChrome(): void {
     const brand = el("div", { class: "brand", "data-tauri-drag-region": "" }, [
       el("span", { class: "brand-mark", "data-tauri-drag-region": "" }, ["M"]),
-      el("span", { "data-tauri-drag-region": "" }, ["Mark"]),
+      el("span", { class: "brand-name", "data-tauri-drag-region": "" }, ["Mark"]),
     ]);
     const spacer = el("div", { class: "spacer", "data-tauri-drag-region": "" }, []);
-    const openBtn = el("button", { class: "btn primary open-btn", title: "Open file (Ctrl+O)" }, ["Open"]);
-    openBtn.addEventListener("click", () => this.openPicker());
-    this.chrome.append(brand, this.fileInfo, spacer, this.recentBtn, openBtn, this.themeBtn, this.settingsBtn);
+    const openBtn = el("button", { class: "btn primary open-btn", type: "button", title: `Open file (${shortcutKeys("open")})` }, ["Open"]);
+    openBtn.addEventListener("click", () => { void this.openPicker(); });
+    this.chrome.append(
+      brand, this.fileBlock, spacer,
+      this.contentsBtn, this.recent.wrap, openBtn, this.layoutSwitch, this.themeBtn, this.settingsBtn, this.closeBtn,
+    );
     if (isTauri) this.chrome.append(this.buildWindowControls());
-    this.chrome.append(this.recentMenu);
   }
 
   /** Custom window buttons: with `decorations: false` the OS bar is gone, so the
    *  app has to offer drag/minimize/maximize/close itself or the window is stuck. */
   private buildWindowControls(): HTMLElement {
-    const icons = {
-      min: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor"/></svg>',
-      max: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>',
-      close: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor"/></svg>',
-    };
     const wrap = el("div", { class: "window-controls" }, []);
-    const add = (kind: keyof typeof icons, title: string, run: (w: ReturnType<typeof import("@tauri-apps/api/window")["getCurrentWindow"]>) => Promise<void>) => {
-      const b = el("button", { class: `win-btn win-${kind}`, title, "aria-label": title, type: "button" }, []);
-      b.innerHTML = icons[kind];
+    const add = (kind: "min" | "max" | "close", title: string, run: (w: { minimize: () => Promise<void>; toggleMaximize: () => Promise<void>; close: () => Promise<void> }) => Promise<void>) => {
+      const b = el("button", { class: `win-btn win-${kind}`, type: "button", title, "aria-label": title }, []);
+      b.innerHTML = WIN_ICONS[kind];
       b.addEventListener("click", () => {
         void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => run(getCurrentWindow()));
       });
@@ -103,130 +203,110 @@ export class App {
     };
     add("min", "Minimize", (w) => w.minimize());
     add("max", "Maximize", (w) => w.toggleMaximize());
-    add("close", "Close", (w) => w.close());
+    add("close", "Close", (w) => {
+      this.session.flush();
+      return w.close();
+    });
     return wrap;
   }
 
   private buildEmptyState(): HTMLElement {
-    const hint = el("p", { class: "empty-hint" }, [
-      "Drop a markdown file here, or ",
-    ]);
-    const openLink = el("button", { class: "link-btn" }, ["open one"]);
-    openLink.addEventListener("click", () => this.openPicker());
-    hint.append(openLink, ".");
+    const open = el("button", { class: "btn primary", type: "button" }, ["Open a file"]);
+    open.addEventListener("click", () => { void this.openPicker(); });
     const card = el("div", { class: "empty-card" }, [
-      el("div", { class: "empty-logo" }, ["M"]),
+      el("div", { class: "empty-mark" }, ["M"]),
       el("h1", {}, ["Mark"]),
-      el("p", { class: "empty-sub" }, ["A small, fast markdown reader"]),
-      hint,
+      el("p", { class: "empty-sub" }, ["A reader for markdown. Drop a file here, or open one."]),
+      open,
+      el("p", { class: "empty-keys" }, [
+        el("span", { class: "empty-key" }, [el("kbd", {}, [shortcutKeys("open")]), "open"]),
+        el("span", { class: "empty-key" }, [el("kbd", {}, [shortcutKeys("find")]), "find"]),
+        el("span", { class: "empty-key" }, [el("kbd", {}, [shortcutKeys("theme")]), "appearance"]),
+      ]),
       el("div", { class: "empty-recent" }, []),
     ]);
     return el("div", { class: "empty-state" }, [card]);
   }
 
-  private refreshRecentUI(): void {
-    const recent = getSettings().recent;
-    const listEl = this.emptyState.querySelector(".empty-recent") as HTMLElement;
-    listEl.innerHTML = "";
-    if (recent.length === 0) {
-      listEl.append(el("div", { class: "empty-recent-none" }, ["No recent files yet."]));
-      return;
-    }
-    const title = el("div", { class: "empty-recent-title" }, ["Recent"]);
-    listEl.append(title);
-    for (const p of recent.slice(0, 8)) {
-      const item = el("button", { class: "recent-item", type: "button", title: p }, [basename(p)]);
-      item.addEventListener("click", () => {
-        if (isTauri) this.openPath(p);
-      });
-      listEl.append(item);
-    }
-  }
-
-  private refreshRecentMenu(): void {
-    const recent = getSettings().recent;
-    this.recentMenu.innerHTML = "";
-    if (recent.length === 0) {
-      this.recentMenu.append(el("div", { class: "recent-empty" }, ["No recent files"]));
-      return;
-    }
-    for (const p of recent.slice(0, 12)) {
-      const item = el("button", { class: "recent-menu-item", type: "button", title: p }, [
-        el("span", { class: "recent-name" }, [basename(p)]),
-        el("span", { class: "recent-path" }, [p]),
-      ]);
-      item.addEventListener("click", () => {
-        this.recentMenu.classList.remove("open");
-        if (isTauri) this.openPath(p);
-      });
-      this.recentMenu.append(item);
-    }
-  }
-
   private wire(): void {
     this.settingsBtn.addEventListener("click", () => this.panel.toggle());
     this.themeBtn.addEventListener("click", () => this.toggleTheme());
-    this.recentBtn.addEventListener("click", (e) => {
+    this.contentsBtn.addEventListener("click", () => this.toggleOutline());
+    this.closeBtn.addEventListener("click", () => this.closeFile());
+    this.recent.button.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.refreshRecentMenu();
-      this.recentMenu.classList.toggle("open");
+      this.recent.toggle();
+    });
+    document.addEventListener("mark:toast", (e) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail) this.toast(detail);
     });
     document.addEventListener("click", (e) => {
-      if (!this.recentMenu.classList.contains("open")) return;
-      if (!this.recentMenu.contains(e.target as Node) && e.target !== this.recentBtn) {
-        this.recentMenu.classList.remove("open");
-      }
+      if (!this.recent.isOpen()) return;
+      const target = e.target instanceof Node ? e.target : null;
+      if (!this.recent.contains(target) && target !== this.recent.button) this.recent.close();
     });
 
-    onSettings((s) => {
-      applySettings(s);
-      this.rerender();
-      this.refreshRecentUI();
-    });
-
+    onSettings((s) => this.onSettingsChange(s));
     window.addEventListener("keydown", (e) => this.onKey(e));
-    this.workspace.addEventListener("scroll", this.savePosition);
+    window.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+    this.workspace.addEventListener("scroll", () => {
+      this.updateProgress();
+      this.session.queue();
+      this.markReading();
+    });
+    if (!isTauri) this.wireBrowserDrop();
+  }
 
-    // Browser drag & drop (Tauri uses native events below).
-    this.workspace.addEventListener("dragover", (e) => {
+  private wireBrowserDrop(): void {
+    window.addEventListener("dragover", (e) => {
       if (e.dataTransfer && Array.from(e.dataTransfer.types).includes("Files")) {
         e.preventDefault();
         this.dropOverlay.setAttribute("aria-hidden", "false");
       }
     });
-    this.workspace.addEventListener("dragleave", (e) => {
+    window.addEventListener("dragleave", (e) => {
       if (e.relatedTarget === null) this.dropOverlay.setAttribute("aria-hidden", "true");
     });
-    this.workspace.addEventListener("drop", async (e) => {
+    window.addEventListener("drop", (e) => {
       if (!e.dataTransfer || !e.dataTransfer.files.length) return;
       e.preventDefault();
       this.dropOverlay.setAttribute("aria-hidden", "true");
-      const f = e.dataTransfer.files[0];
-      try {
-        await this.showFile(await blobToLoaded(f));
-      } catch (err) {
-        this.toast(String(err));
-      }
+      const files = [...e.dataTransfer.files];
+      const f = files[0];
+      if (files.length > 1) this.toast("Opened the first file.");
+      void blobToLoaded(f).then((loaded) => this.showFile(loaded)).catch((err) => this.toast(String(err)));
     });
   }
 
   private wireTauri(): void {
     if (!isTauri) return;
-    // File passed on the command line at first launch (OS file association).
     void import("@tauri-apps/api/core").then(({ invoke }) => {
       invoke<string | null>("initial_path").then((p) => {
-        if (p) this.openPath(p);
+        if (p) void this.openPath(p);
+        else this.resumeLast();
       });
     });
-    // Subsequent launches forward a path via the single-instance plugin.
     void import("@tauri-apps/api/event").then(({ listen }) => {
       void listen<string>("open-file", (e) => {
-        if (e.payload) this.openPath(e.payload);
+        if (e.payload) void this.openPath(e.payload);
       });
     });
-    // Native drag & drop onto the window.
     void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
       const win = getCurrentWindow();
+      const paintMax = () => {
+        void win.isMaximized().then((max) => {
+          const btn = this.chrome.querySelector(".win-max");
+          if (!btn) return;
+          btn.innerHTML = max ? WIN_ICONS.restore : WIN_ICONS.max;
+          const label = max ? "Restore" : "Maximize";
+          btn.setAttribute("aria-label", label);
+          btn.setAttribute("title", label);
+        });
+      };
+      paintMax();
+      void win.onResized(() => paintMax());
+      void win.onCloseRequested(() => { this.session.flush(); });
       void win.onDragDropEvent((ev) => {
         if (ev.payload.type === "enter" || ev.payload.type === "over") {
           this.dropOverlay.setAttribute("aria-hidden", "false");
@@ -234,107 +314,453 @@ export class App {
           this.dropOverlay.setAttribute("aria-hidden", "true");
         } else if (ev.payload.type === "drop") {
           this.dropOverlay.setAttribute("aria-hidden", "true");
-          const path = ev.payload.paths && ev.payload.paths[0];
-          if (path) this.openPath(path);
+          const paths = ev.payload.paths ?? [];
+          const path = paths[0];
+          if (paths.length > 1) this.toast("Opened the first file.");
+          if (path) void this.openPath(path);
         }
       });
     });
   }
 
-  private onKey(e: KeyboardEvent): void {
-    const mod = e.ctrlKey || e.metaKey;
-    if (mod && e.key.toLowerCase() === "o") {
-      e.preventDefault();
-      this.openPicker();
-    } else if (mod && e.key === ",") {
-      e.preventDefault();
-      this.panel.toggle();
-    } else if (mod && e.shiftKey && e.key.toLowerCase() === "t") {
-      e.preventDefault();
-      this.toggleTheme();
-    } else if (mod && e.key.toLowerCase() === "p") {
-      e.preventDefault();
-      window.print();
-    } else if (mod && (e.key === "+" || e.key === "=")) {
-      e.preventDefault();
-      this.zoom(1);
-    } else if (mod && e.key === "-") {
-      e.preventDefault();
-      this.zoom(-1);
-    } else if (mod && e.key === "0") {
-      e.preventDefault();
-      this.zoom(0);
-    } else if (e.key === "Escape") {
-      this.panel.setOpen(false);
-      this.recentMenu.classList.remove("open");
+  private watchSystemTheme(): void {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (getSettings().mode === "system") {
+        applySettings(getSettings());
+        this.refreshThemeIcon();
+        this.restyle();
+      }
+    });
+  }
+
+  private onSettingsChange(s: Settings): void {
+    const ratio = this.session.ratio();
+    const parseChanged = JSON.stringify(s.render) !== this.renderedRender;
+    applySettings(s);
+    this.applyLayout();
+    this.refreshThemeIcon();
+    if (parseChanged && this.viewer.file) {
+      this.renderedRender = JSON.stringify(s.render);
+      this.pendingRatio = ratio;
+      this.rerender();
+    } else if (this.viewer.file) {
+      this.restyle(ratio);
+      requestAnimationFrame(() => {
+        this.session.scrollToRatio(ratio);
+        this.updateProgress();
+        this.markReading();
+      });
     }
   }
 
+  /** Document scrolls. Book paginates. The choice does not reparse the file. */
+  private applyLayout(): void {
+    const book = getSettings().layout === "book";
+    this.workspace.classList.toggle("layout-book", book);
+    this.workspace.classList.toggle("layout-scroll", !book);
+    this.book.setEnabled(book);
+    this.session.follow(book ? {
+      ratio: () => this.book.ratio(),
+      scrollToRatio: (n) => this.book.scrollToRatio(n),
+    } : null);
+    this.refreshLayoutSwitch();
+  }
+
+  private buildLayoutSwitch(): HTMLElement {
+    const wrap = el("div", { class: "layout-switch", role: "group", "aria-label": "Reading layout" });
+    const options: { id: ReadingLayout; label: string }[] = [
+      { id: "scroll", label: "Document" },
+      { id: "book", label: "Book" },
+    ];
+    for (const item of options) {
+      const button = el("button", {
+        type: "button",
+        class: "layout-opt",
+        "data-layout": item.id,
+        title: item.id === "book" ? "Two pages, like a reader" : "Scroll the file",
+      }, [item.label]);
+      button.addEventListener("click", () => {
+        if (getSettings().layout !== item.id) updateSettings({ layout: item.id });
+      });
+      wrap.append(button);
+    }
+    return wrap;
+  }
+
+  private refreshLayoutSwitch(): void {
+    const layout = getSettings().layout;
+    this.layoutSwitch.querySelectorAll<HTMLElement>(".layout-opt").forEach((button) => {
+      const on = button.dataset.layout === layout;
+      button.classList.toggle("active", on);
+      button.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  /** Reflow the open book and redraw diagrams after a theme or measure change. */
+  private restyle(saved?: number): void {
+    if (!this.viewer.file) return;
+    const ratio = saved ?? this.session.ratio();
+    this.book.layout();
+    this.session.scrollToRatio(ratio);
+    void this.viewer.hydrateArtifacts().then(() => {
+      this.book.layout();
+      this.session.scrollToRatio(ratio);
+      this.updateProgress();
+    });
+  }
+
+  private onKey(e: KeyboardEvent): void {
+    if (this.recent.consumeKey(e)) return;
+    if (this.find.consumeKey(e)) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.dismiss();
+      return;
+    }
+    const mod = e.ctrlKey || e.metaKey;
+    if (this.canPage(e) && !mod && isPagingKey(e)) {
+      this.onReadKey(e);
+      return;
+    }
+    const cmd = matchCommand(e, { typing: this.isTyping(e), desktop: isTauri });
+    if (!cmd) return;
+    e.preventDefault();
+    this.runCommand(cmd);
+  }
+
+  private dismiss(): void {
+    if (!this.find.hidden) { this.find.close(); return; }
+    if (this.recent.isOpen()) { this.recent.close(); return; }
+    if (this.panel.isOpen) { this.panel.setOpen(false); return; }
+    if (this.outline.isOpen) {
+      this.outline.setOpen(false);
+      this.refreshChrome();
+    }
+  }
+
+  private runCommand(id: CommandId): void {
+    switch (id) {
+      case "open": void this.openPicker(); break;
+      case "find": this.openFind(); break;
+      case "find-next": break;
+      case "contents": this.toggleOutline(); break;
+      case "reload": void this.reloadCurrent(); break;
+      case "close": this.closeFile(); break;
+      case "recent": this.recent.toggle(); break;
+      case "theme": this.toggleTheme(); break;
+      case "layout": this.toggleLayout(); break;
+      case "settings": this.panel.toggle(); break;
+      case "zoom-in": this.zoom(1); break;
+      case "zoom-out": this.zoom(-1); break;
+      case "zoom-reset": this.zoom(0); break;
+      case "print": window.print(); break;
+      default: {
+        const _never: never = id;
+        return _never;
+      }
+    }
+  }
+
+  private onReadKey(e: KeyboardEvent): void {
+    if (!this.viewer.file) return;
+    if (getSettings().layout === "book") {
+      this.onBookKey(e);
+      return;
+    }
+    this.onScrollKey(e);
+  }
+
+  private onBookKey(e: KeyboardEvent): void {
+    if (e.key === "Home") {
+      e.preventDefault();
+      this.book.go(0, true);
+      return;
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      this.book.go(this.book.spreads - 1, true);
+      return;
+    }
+    let dir = 0;
+    if (e.key === "PageDown" || e.key === "ArrowRight" || e.key === "ArrowDown" || (e.key === " " && !e.shiftKey)) dir = 1;
+    else if (e.key === "PageUp" || e.key === "ArrowLeft" || e.key === "ArrowUp" || (e.key === " " && e.shiftKey)) dir = -1;
+    if (dir === 0) return;
+    e.preventDefault();
+    if (dir > 0) this.book.next();
+    else this.book.prev();
+  }
+
+  private onScrollKey(e: KeyboardEvent): void {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") return;
+    const view = this.workspace;
+    const page = Math.max(80, Math.round(view.clientHeight * 0.9));
+    if (e.key === "Home") {
+      e.preventDefault();
+      view.scrollTop = 0;
+      return;
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      view.scrollTop = view.scrollHeight;
+      return;
+    }
+    let delta = 0;
+    if (e.key === "PageDown" || (e.key === " " && !e.shiftKey)) delta = page;
+    else if (e.key === "PageUp" || (e.key === " " && e.shiftKey)) delta = -page;
+    else if (e.key === "ArrowDown") delta = 64;
+    else if (e.key === "ArrowUp") delta = -64;
+    if (delta === 0) return;
+    e.preventDefault();
+    view.scrollBy({ top: delta });
+  }
+
+  private onWheel(e: WheelEvent): void {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - this.lastZoom < 40) return;
+    this.lastZoom = now;
+    this.zoom(e.deltaY < 0 ? 1 : -1);
+  }
+
+  private isTyping(e: KeyboardEvent): boolean {
+    const t = e.target as HTMLElement | null;
+    if (!t) return false;
+    const tag = t.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable;
+  }
+
+  private canPage(e: KeyboardEvent): boolean {
+    if (this.isTyping(e)) return false;
+    const t = e.target as HTMLElement | null;
+    if (!t) return true;
+    return t.tagName !== "BUTTON" && t.tagName !== "A" && t.tagName !== "SELECT";
+  }
+
   async openPicker(): Promise<void> {
+    const token = ++this.openToken;
     try {
       const f = await getFileService().pick();
-      if (f) await this.showFile(f);
+      if (!f || token !== this.openToken) return;
+      this.showFile(f);
     } catch (err) {
-      this.toast(String(err));
+      if (token === this.openToken) this.toast(String(err));
     }
   }
 
   async openPath(path: string): Promise<void> {
+    const token = ++this.openToken;
     try {
       const f = await getFileService().readPath(path);
-      await this.showFile(f);
+      if (token !== this.openToken) return;
+      this.showFile(f);
     } catch (err) {
+      if (token !== this.openToken) return;
       this.toast("Could not open: " + String(err));
+      if (isMissing(err)) this.dropRecent(path);
     }
   }
 
-  private async showFile(f: LoadedFile): Promise<void> {
-    // Flush the outgoing document's position before the key changes under us.
-    if (this.currentKey) setPosition(this.currentKey, this.workspace.scrollTop);
+  private resumeLast(): void {
+    const path = getRecent()[0];
+    if (path && isTauri) void this.openPath(path);
+  }
 
+  private showFile(f: LoadedFile): void {
+    this.session.flush();
     this.viewer.render(f);
     this.emptyState.classList.add("hidden");
-    this.viewer.root.hidden = false;
-    this.fileInfo.textContent = f.name;
-    this.fileInfo.setAttribute("title", f.path || f.name);
-    document.title = f.name + " \u00b7 Mark";
+    this.session.key = f.path ? canonicalPath(f.path) : "";
+    this.fileName.textContent = f.name;
+    this.fileName.title = f.path || f.name;
+    this.fileMeta.textContent = readingMeta(f.source);
+    document.title = `${f.name} \u00b7 Mark`;
+    if (f.path) pushRecent(f.path);
+    this.recent.refresh();
+    this.workspace.classList.add("has-file");
+    this.refreshChrome();
+    this.paint(this.session.place());
+    void this.audioBar.setDocument(f.path);
+    void this.karaoke.setDocument(f.path, this.viewer.root);
+    this.session.watch(f.path);
+    this.workspace.focus();
+  }
 
-    this.currentKey = f.path || f.name;
-    pushRecent(this.currentKey);
-    this.refreshRecentUI();
-
-    // Resume where this file was left off. rAF because the debounced re-render
-    // above (and late font/math layout) can still change the height; the scroll
-    // assignment clamps to whatever the container can hold at that moment.
-    const top = getPosition(this.currentKey);
-    this.workspace.scrollTop = 0;
-    requestAnimationFrame(() => {
-      this.workspace.scrollTop = top;
+  /** Render, contents, find, then put the reading place back after layout and images. */
+  private paint(place: ReadingPlace | number): void {
+    this.outline.rebuild(this.viewer.file ? this.viewer.root : null);
+    if (this.viewer.file) this.karaoke.rebuild(this.viewer.root);
+    this.find.reapply(false);
+    const key = this.session.key;
+    const apply = () => {
+      if (this.session.key !== key) return;
+      this.book.layout();
+      if (typeof place === "number") this.session.scrollToRatio(place);
+      else this.session.restore(place);
+      this.updateProgress();
+    };
+    apply();
+    requestAnimationFrame(apply);
+    void this.viewer.hydrateImages().then(async () => {
+      await this.viewer.hydrateArtifacts();
+      apply();
     });
+  }
+
+  private closeFile(): void {
+    if (!this.viewer.file) return;
+    this.session.flush();
+    this.session.stop();
+    this.find.close();
+    this.viewer.clear();
+    void this.audioBar.setDocument("");
+    void this.karaoke.setDocument("", null);
+    this.session.key = "";
+    this.workspace.classList.remove("has-file");
+    this.emptyState.classList.remove("hidden");
+    this.fileName.textContent = "";
+    this.fileMeta.textContent = "";
+    document.title = "Mark";
+    this.outline.rebuild(null);
+    this.refreshChrome();
+    this.updateProgress();
+  }
+
+  private async reloadCurrent(): Promise<void> {
+    const file = this.viewer.file;
+    if (!file?.path) {
+      this.toast(file ? "This file isn't on disk." : "Open a file first.");
+      return;
+    }
+    const ratio = this.session.ratio();
+    const key = this.session.key;
+    try {
+      const f = await getFileService().readPath(file.path);
+      if (this.session.key !== key) return;
+      this.viewer.render(f);
+      this.fileMeta.textContent = readingMeta(f.source);
+      this.paint(ratio);
+    } catch (err) {
+      this.toast(String(err));
+      if (isMissing(err)) this.dropRecent(file.path);
+    }
+  }
+
+  private dropRecent(path: string): void {
+    removeRecent(path);
+    forgetPlace(path);
+    this.recent.refresh();
+  }
+
+  private refreshChrome(): void {
+    const open = !!this.viewer.file;
+    this.contentsBtn.classList.toggle("hidden", !open);
+    this.closeBtn.classList.toggle("hidden", !open);
+    this.fileBlock.classList.toggle("hidden", !open);
+    this.progress.classList.toggle("hidden", !open);
+    const showOutline = open && this.outline.isOpen;
+    this.contentsBtn.classList.toggle("active", showOutline);
+    this.contentsBtn.setAttribute("aria-expanded", String(showOutline));
+    this.outline.sync(open);
+  }
+
+  private toggleOutline(): void {
+    const count = this.viewer.root.querySelectorAll("h1,h2,h3,h4,h5,h6").length;
+    const result = this.outline.toggle(!!this.viewer.file, count);
+    if (result === "no-file") this.toast("Open a file first.");
+    else if (result === "no-headings") this.toast("This file has no headings.");
+    else this.refreshChrome();
+  }
+
+  private scrollToId(id: string): void {
+    const node = this.viewer.root.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
+    if (!node) return;
+    this.showInDocument(node);
+  }
+
+  private openFind(): void {
+    if (!this.viewer.file) {
+      this.toast("Open a file first.");
+      return;
+    }
+    this.find.open();
+  }
+
+  private reveal(hit: HTMLElement): void {
+    this.showInDocument(hit);
+  }
+
+  private showInDocument(node: HTMLElement): void {
+    if (getSettings().layout === "book") {
+      this.book.show(node);
+      return;
+    }
+    node.scrollIntoView({ block: "start" });
+  }
+
+  /** Karaoke follow: turn the page, or scroll the column. */
+  private revealSpoken(el: HTMLElement): void {
+    if (getSettings().layout === "book") {
+      this.book.show(el);
+      return;
+    }
+    el.scrollIntoView({ block: "center" });
+  }
+
+  private markReading(): void {
+    if (!this.viewer.file || getSettings().layout === "book") return;
+    const line = this.workspace.getBoundingClientRect().top + 32;
+    let current: string | null = null;
+    for (const head of this.viewer.root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
+      if (!head.id) continue;
+      if (head.getBoundingClientRect().top <= line) current = head.id;
+      else break;
+    }
+    this.outline.mark(current);
+  }
+
+  private toggleLayout(): void {
+    const next: ReadingLayout = getSettings().layout === "book" ? "scroll" : "book";
+    updateSettings({ layout: next });
+  }
+
+  private onBook(): void {
+    this.folio.textContent = this.viewer.file ? this.book.label() : "";
+    this.turnPrev.disabled = !this.book.canPrev();
+    this.turnNext.disabled = !this.book.canNext();
+    this.outline.mark(this.viewer.file ? this.book.headingId() : null);
+    this.updateProgress();
+    if (this.viewer.file) this.session.queue();
+  }
+
+  private updateProgress(): void {
+    const r = this.viewer.file ? this.session.ratio() : 0;
+    this.progressBar.style.transform = `scaleX(${r})`;
   }
 
   private toggleTheme(): void {
     const dark = resolvedMode(getSettings().mode) === "dark";
     updateSettings({ mode: dark ? "light" : "dark" });
-    this.refreshThemeIcon();
   }
 
-  /** Ctrl +/− scale the reading size, Ctrl+0 resets. Reuses the fontSize setting
-   *  (and its panel slider) rather than introducing a second scale factor, so the
-   *  two controls can never disagree. step 0 = reset to default. */
+  /** Ctrl +/− and pinch scale the reading size. step 0 resets. */
   private zoom(step: number): void {
     const { fontSize } = getSettings();
     const next = step === 0 ? DEFAULT_SETTINGS.fontSize : fontSize + step;
     const clamped = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, next));
     if (clamped !== fontSize) updateSettings({ fontSize: clamped });
+    this.zoomToast.textContent = `${clamped} px`;
+    this.zoomToast.hidden = false;
+    window.clearTimeout(this.zoomTimer);
+    this.zoomTimer = window.setTimeout(() => { this.zoomToast.hidden = true; }, 700);
   }
 
-  private themeIcon(): string {
-    return resolvedMode(getSettings().mode) === "dark" ? "\u263c" : "\u263d";
+  private themeIcon(): SVGElement {
+    return icon(resolvedMode(getSettings().mode) === "dark" ? "sun" : "moon");
   }
 
   private refreshThemeIcon(): void {
-    this.themeBtn.textContent = this.themeIcon();
+    this.themeBtn.replaceChildren(this.themeIcon());
   }
 
   private toast(msg: string): void {
@@ -346,4 +772,22 @@ export class App {
       this.toastEl.hidden = true;
     }, 3200);
   }
+}
+
+function readingMeta(source: string): string {
+  const words = source.trim() ? source.trim().split(/\s+/).length : 0;
+  if (words === 0) return "Empty";
+  const minutes = Math.max(1, Math.round(words / 220));
+  return `${words.toLocaleString()} words · ${minutes} min`;
+}
+
+
+function isPagingKey(e: KeyboardEvent): boolean {
+  return e.key === " " || e.key === "PageDown" || e.key === "PageUp" || e.key === "Home" || e.key === "End"
+    || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight";
+}
+
+function isMissing(err: unknown): boolean {
+  const s = String(err).toLowerCase();
+  return s.includes("os error 2") || s.includes("cannot find") || s.includes("not found") || s.includes("no such file");
 }

@@ -16,11 +16,48 @@ import DOMPurify from "dompurify";
 import type { DocRenderer } from "./base";
 import type { FileKind } from "../types";
 import type { Settings } from "../types";
+import { artifactHtml } from "../artifacts";
 import { escapeHtml, inlineText, slugify } from "../util";
 import { getSettings } from "../store";
 
 const CALLOUTS = ["tip", "info", "note", "warning", "danger", "success"];
 const MATH_DELIMITERS = ["dollars", "brackets"];
+
+const ALERTS: Record<string, { kind: string; label: string }> = {
+  NOTE: { kind: "note", label: "Note" },
+  TIP: { kind: "tip", label: "Tip" },
+  IMPORTANT: { kind: "warning", label: "Important" },
+  WARNING: { kind: "warning", label: "Warning" },
+  CAUTION: { kind: "danger", label: "Caution" },
+};
+
+let purifyHooked = false;
+function ensurePurifyHook(): void {
+  if (purifyHooked) return;
+  purifyHooked = true;
+  DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
+    if (data.attrName !== "style" || !data.attrValue) return;
+    data.attrValue = data.attrValue
+      .replace(/position\s*:\s*(fixed|sticky)/gi, "position:relative")
+      .replace(/z-index\s*:\s*[^;]+;?/gi, "");
+  });
+}
+
+/** Drop a leading YAML block so it doesn't become a horizontal rule plus a heading. */
+export function stripFrontmatter(source: string): string {
+  const src = source.replace(/^\uFEFF/, "");
+  const lines = src.split(/\r?\n/);
+  if ((lines[0] ?? "").trim() !== "---") return src;
+  let close = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      close = i;
+      break;
+    }
+  }
+  if (close < 0) return src;
+  return lines.slice(close + 1).join("\n");
+}
 
 const PURIFY_CONFIG = {
   ADD_ATTR: [
@@ -70,7 +107,7 @@ export class MarkdownRenderer implements DocRenderer {
     for (const name of CALLOUTS) {
       md.use(container, name, { render: calloutRenderer(name) });
     }
-    md.use(container, "details", { render: detailsRenderer, validate: () => true });
+    md.use(container, "details", { render: detailsRenderer });
 
     if (s.math) {
       md.use(texmath, {
@@ -81,6 +118,7 @@ export class MarkdownRenderer implements DocRenderer {
     }
 
     this.installRules(md, settings);
+    installAlerts(md);
     return md;
   }
 
@@ -88,13 +126,16 @@ export class MarkdownRenderer implements DocRenderer {
   private installRules(md: MarkdownIt, settings: Settings): void {
     const self = this;
 
-    // Heading anchors: <h2 id="..."> based on heading text.
-    md.renderer.rules.heading_open = function (tokens, idx, options, _env, renderer) {
+    // Heading anchors. Prefixed so names like "body" can't be stripped as DOM clobbering.
+    md.renderer.rules.heading_open = function (tokens, idx, options, env, renderer) {
       const tok = tokens[idx];
       const next = tokens[idx + 1];
       const text = next && next.type === "inline" ? inlineText(next.children) : "";
-      const id = slugify(text);
-      if (id) tok.attrSet("id", id);
+      const base = `h-${slugify(text) || "section"}`;
+      const counts = (env.slugCount ??= Object.create(null) as Record<string, number>);
+      const n = counts[base] ?? 0;
+      counts[base] = n + 1;
+      tok.attrSet("id", n === 0 ? base : `${base}-${n + 1}`);
       return renderer.renderToken(tokens, idx, options);
     };
 
@@ -103,6 +144,8 @@ export class MarkdownRenderer implements DocRenderer {
       const token = tokens[idx];
       const info = (token.info || "").trim();
       const lang = info.split(/\s+/)[0] || "";
+      const figure = artifactHtml(lang, token.content);
+      if (figure) return figure;
       return self.codeBlock(token.content, lang);
     };
 
@@ -117,13 +160,12 @@ export class MarkdownRenderer implements DocRenderer {
       function (tokens, idx, options, _env, renderer) {
         return renderer.renderToken(tokens, idx, options);
       };
+    // External links always leave the reader. "Open here" would navigate the webview away.
     md.renderer.rules.link_open = function (tokens, idx, options, env, renderer) {
-      if (settings.render.linkTarget === "blank") {
-        const href = tokens[idx].attrGet("href") || "";
-        if (/^(https?:|mailto:|tel:|ftp:)/i.test(href)) {
-          tokens[idx].attrSet("target", "_blank");
-          tokens[idx].attrSet("rel", "noopener noreferrer");
-        }
+      const href = tokens[idx].attrGet("href") || "";
+      if (/^(https?:|mailto:|tel:|ftp:)/i.test(href)) {
+        tokens[idx].attrSet("target", "_blank");
+        tokens[idx].attrSet("rel", "noopener noreferrer");
       }
       return defaultLinkOpen(tokens, idx, options, env, renderer);
     };
@@ -141,9 +183,48 @@ export class MarkdownRenderer implements DocRenderer {
   }
 
   render(source: string): string {
-    const html = this.md.render(source);
+    ensurePurifyHook();
+    const html = this.md.render(stripFrontmatter(source), { slugCount: Object.create(null) });
     return DOMPurify.sanitize(html, PURIFY_CONFIG) as string;
   }
+}
+
+function installAlerts(md: MarkdownIt): void {
+  md.core.ruler.after("inline", "gfm-alerts", (state) => {
+    const tokens = state.tokens;
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type !== "blockquote_open") continue;
+      let inline = -1;
+      for (let j = i + 1; j < tokens.length; j++) {
+        if (tokens[j].type === "blockquote_close") break;
+        if (tokens[j].type === "inline") {
+          inline = j;
+          break;
+        }
+      }
+      if (inline < 0) continue;
+      const children = tokens[inline].children;
+      if (!children) continue;
+      const first = children.find((c) => c.type === "text" && c.content.trim());
+      if (!first) continue;
+      const match = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*/.exec(first.content.trimStart());
+      if (!match) continue;
+      const alert = ALERTS[match[1]];
+      if (!alert) continue;
+      tokens[i].attrJoin("class", `callout callout-${alert.kind}`);
+      tokens[i].attrSet("data-alert", alert.label);
+      const rest = first.content.trimStart().slice(match[0].length);
+      if (rest.trim()) {
+        first.content = rest;
+        continue;
+      }
+      const at = children.indexOf(first);
+      children.splice(at, 1);
+      if (children[at] && (children[at].type === "softbreak" || children[at].type === "hardbreak")) {
+        children.splice(at, 1);
+      }
+    }
+  });
 }
 
 function calloutRenderer(name: string) {
@@ -159,7 +240,8 @@ function calloutRenderer(name: string) {
 
 function detailsRenderer(tokens: any[], idx: number) {
   if (tokens[idx].nesting === 1) {
-    const summary = (tokens[idx].info || "").trim() || "Details";
+    const info = (tokens[idx].info || "").trim();
+    const summary = info.replace(/^details\b\s*/i, "").trim() || "Details";
     return `<details class="md-details"><summary>${escapeHtml(summary)}</summary>\n`;
   }
   return `</details>\n`;

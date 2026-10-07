@@ -90,7 +90,7 @@ describe("MarkdownRenderer", () => {
   it("adds heading anchors", () => {
     const div = document.createElement("div");
     div.innerHTML = new MarkdownRenderer().render(sample);
-    expect(div.querySelector("h1")?.getAttribute("id")).toBe("my-document");
+    expect(div.querySelector("h1")?.getAttribute("id")).toBe("h-my-document");
   });
 
   it("expands emoji shortcodes", () => {
@@ -104,6 +104,47 @@ describe("MarkdownRenderer", () => {
     const html = r.render("<script>alert(1)</script>\n\n**bold**");
     expect(html).not.toContain("<script");
     expect(html).toContain("<strong>bold</strong>");
+  });
+
+  it("drops YAML frontmatter instead of turning it into a heading", () => {
+    const html = new MarkdownRenderer().render("---\ntitle: Hello\nauthor: Ada\n---\n\n# Body\n");
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    expect(div.querySelector("h2")).toBeNull();
+    expect(div.querySelector("h1")?.id).toBe("h-body");
+    expect(div.textContent).not.toContain("author: Ada");
+  });
+
+  it("renders GitHub alerts and details titles", () => {
+    const html = new MarkdownRenderer().render([
+      "> [!NOTE]",
+      "> Keep going",
+      "",
+      ":::details More",
+      "hidden",
+      ":::",
+    ].join("\n"));
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    const quote = div.querySelector("blockquote");
+    expect(quote?.classList.contains("callout-note")).toBe(true);
+    expect(quote?.getAttribute("data-alert")).toBe("Note");
+    expect(html).not.toContain("[!NOTE]");
+    expect(div.querySelector("summary")?.textContent).toBe("More");
+  });
+
+  it("gives duplicate and non-latin headings stable ids", () => {
+    const html = new MarkdownRenderer().render("# Code\n\n# Code\n\n# Café — één\n");
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    const ids = [...div.querySelectorAll("h1")].map((h) => h.id);
+    expect(ids).toEqual(["h-code", "h-code-2", "h-cafe-een"]);
+  });
+
+  it("neutralises fixed-position overlays", () => {
+    const html = new MarkdownRenderer().render('<div style="position:fixed;z-index:9">x</div>\n');
+    expect(html).not.toMatch(/position:\s*fixed/i);
+    expect(html).not.toMatch(/z-index/i);
   });
 
   it("respects parse-affecting settings (math toggle)", () => {

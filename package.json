@@ -20,7 +20,6 @@
     "@tauri-apps/plugin-opener": "^2.2.5",
     "@tauri-apps/plugin-window-state": "^2.2.1",
     "dompurify": "^3.2.3",
-    "github-markdown-css": "^5.8.1",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.11",
     "markdown-it": "^14.1.0",
@@ -33,7 +32,8 @@
     "markdown-it-sub": "^2.0.0",
     "markdown-it-sup": "^2.0.0",
     "markdown-it-task-lists": "^2.1.1",
-    "markdown-it-texmath": "^1.0.0"
+    "markdown-it-texmath": "^1.0.0",
+    "mermaid": "^12.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",

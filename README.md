@@ -1,6 +1,6 @@
 # Mark
 
-A small, fast, customizable **markdown reader** for the desktop — built with Tauri v2 + TypeScript. Parses GitHub-flavored markdown the way VS Code's preview does, out of the box.
+A small, fast **markdown reader** for the desktop — built with Tauri v2 + TypeScript. Parses GitHub-flavored markdown the way VS Code's preview does, out of the box.
 
 ## Features
 
@@ -8,12 +8,15 @@ A small, fast, customizable **markdown reader** for the desktop — built with T
 - Syntax highlighting (highlight.js, all languages) with per-block copy button
 - Math via KaTeX (`$...$`, `$$...$$`, `\(...\)`, `\[...\]`)
 - Footnotes, abbreviations, definition lists, sub/sup, `==mark==`, emoji `:shortcodes:`
-- Callout blocks: `:::tip / info / note / warning / danger / success`
+- Callout blocks: `:::tip / info / note / warning / danger / success` and GitHub alerts (`> [!NOTE]`)
 - Collapsible `:::details` blocks
-- Heading anchors, sanitized HTML (DOMPurify) for safety
-- Drag-and-drop, recent files, external links open in your browser
-- Remembers your reading position per file, and resumes there when you reopen it
-- Deep customization: 10 themes + custom colors, light/dark/auto, fonts, sizes, accent
+- Heading anchors and a contents list, find in the document, sanitized HTML (DOMPurify)
+- Drag-and-drop, recent files, links to other documents open in Mark, web links open in the browser
+- Remembers your place in each file (and reloads when the file changes on disk)
+- Two reading layouts: a scrolling document, and a two-page book
+- One paper light and one e-ink dark, with a fixed reading face
+- Diagrams (`mermaid`), charts (`chart`), and progress plans (`plan`) in either layout
+- Narration when a sibling audio file is present, with word-level karaoke from `<name>.words.json`
 - Remembers window size/position; single-instance + OS file association (open `.md` files with Mark)
 
 ## Requirements
@@ -63,20 +66,39 @@ LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./target/debug/mark
 
 ## Customize
 
-Open **Settings** (gear, top-right, or `Ctrl+,`). Change theme, mode, fonts, font size, line height, content width, padding, accent color, and — when "Custom" is selected — every page color. Toggle auto-linking, smart quotes, emoji, math, and task lists. Everything persists.
+Open **Settings** (top-right, or `Ctrl+,`). **Document** scrolls the file. **Book** turns two pages on a paper spread; arrow keys and the side buttons turn the page. Choose light, dark, or auto. Reading size, line height, column width, and padding are adjustable. The typeface is fixed: body ink stays quieter than bold and headings. Charts, plans, and diagrams render in both layouts. Toggle auto-linking, smart quotes, emoji, math, and task lists. Reset appearance keeps your recent files.
 
-Shortcuts: `Ctrl/Cmd+O` open · `Ctrl/Cmd+,` settings · `Ctrl/Cmd+Shift+T` toggle theme · `Ctrl/Cmd+P` print / save as PDF · `Ctrl/Cmd +/-` reading size · `Ctrl/Cmd+0` reset size · `Esc` close panel.
+If the open file has audio beside it (`name.mp3`, or `audio/name.mp3`, also m4a, wav, ogg), a player appears under the page. A matching `name.words.json` (`{ "woorden": [{ "w", "t", "d" }] }`) highlights the spoken word. Follow keeps that word on the page.
+
+Select a passage to mark it yellow, green, or pink, or to attach a note. The mark stays on that sentence after you close the file. Click it again to edit the note or remove it.
+
+A fenced `mermaid` block draws a diagram (flow, gantt, pie, sequence). A `chart` block draws bars, a line, or a pie. A `plan` block draws a progress list:
+
+````markdown
+```plan
+title Quarter
+Research | 40
+Draft | 80
+```
+````
+
+Shortcuts: `Ctrl/Cmd+O` open · `Ctrl/Cmd+F` find · `Ctrl/Cmd+G` or `F3` next match · `Ctrl/Cmd+Shift+O` contents · `Ctrl/Cmd+R` reload · `Ctrl/Cmd+W` close file · `R` recent files · `Ctrl/Cmd+Shift+T` light/dark · `Ctrl/Cmd+Shift+B` document/book · `Ctrl/Cmd+,` settings · `Ctrl/Cmd+P` print · `Ctrl/Cmd +/-` reading size · `Ctrl/Cmd+0` reset size · `Space` next page in book, or down in document · `Esc` close the front panel.
 
 ## Project structure
 
 ```
 src/
   main.ts                 entry (loads CSS, mounts app)
-  app.ts                  app shell: chrome, empty state, recent, drag-drop, shortcuts, Tauri wiring
-  viewer.ts               renders documents, copy buttons, external links
+  app.ts                  shell: chrome, shortcuts, and how the pieces connect
+  session.ts              open document, reading place, file watch
+  outline.ts              contents column
+  find.ts                 find bar and in-document marks
+  recent.ts               recent-file menu
+  commands.ts             shortcut list shared with the key handler
+  viewer.ts               renders documents, copy buttons, document and web links
   settings.ts             settings panel (live, persisted)
-  themes.ts               theme presets + applies settings as CSS variables
-  store.ts                settings persistence (localStorage)
+  themes.ts               the light and dark theme, applied as CSS variables
+  store.ts                appearance, recent files, and reading place (localStorage)
   files.ts                file picking/reading (Tauri command + browser fallback)
   renderer/
     base.ts               DocRenderer interface  ← add new formats (e.g. plain text) here
@@ -84,8 +106,8 @@ src/
     text.ts               plain-text renderer (foundation for a future text-reader mode)
     index.ts              renderer factory by file kind
   styles/                 markdown.css (document), app.css (chrome/panel)
-src-tauri/                Rust shell: read_text_file command, CLI/single-instance, plugins
-src/__tests__/renderer.test.ts   vitest suite (jsdom) for the renderer
+src-tauri/                Rust shell: text and image reads, CLI/single-instance, plugins
+src/__tests__/            vitest suite for the renderer, themes, paths, and store
 ```
 
 ## Adding the "text reader" mode later

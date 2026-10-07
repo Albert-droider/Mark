@@ -75,6 +75,51 @@ class BrowserFileService implements FileService {
   }
 }
 
+/** Image bytes as a data URL. Relative pictures can't load from the webview origin. */
+export async function loadImageDataUrl(path: string): Promise<string> {
+  if (!isTauri) throw new Error("Local images open in the desktop app.");
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string>("read_image_file", { path });
+}
+
+/** Audio next to the document, or in an `audio/` folder beside it. */
+export async function findAudio(path: string): Promise<string | null> {
+  if (!isTauri || !path) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("find_audio", { path });
+}
+
+/** Word timeline `<naam>.words.json`, or null when the document has no narration. */
+export async function loadTiming(path: string): Promise<string | null> {
+  if (!isTauri || !path) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("read_timing", { path });
+}
+
+/** Read an audio file as an object URL. The caller revokes it. */
+export async function audioObjectUrl(path: string): Promise<string> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  const bytes = await invoke<ArrayBuffer>("read_audio_file", { path });
+  return URL.createObjectURL(new Blob([bytes], { type: audioMime(path) }));
+}
+
+function audioMime(path: string): string {
+  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  switch (ext) {
+    case "mp3": return "audio/mpeg";
+    case "m4a": return "audio/mp4";
+    case "wav": return "audio/wav";
+    case "ogg": return "audio/ogg";
+    default: return "audio/mpeg";
+  }
+}
+
+/** Milliseconds since the epoch, for the reload-when-changed poll. */
+export async function fileMtime(path: string): Promise<number> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<number>("file_mtime_ms", { path });
+}
+
 let service: FileService | null = null;
 export function getFileService(): FileService {
   if (!service) service = isTauri ? new TauriFileService() : new BrowserFileService();
