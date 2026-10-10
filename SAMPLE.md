@@ -1,6 +1,26 @@
-# Mark Sample
+# MARK reader/editor demo
 
-A quick tour of what **Mark** renders. Open this file to verify everything works.
+A public sample for books, study notes, READMEs, and code knowledge.
+The reader keeps this source read-only. Use an editable copy to try the writing controls.
+
+## Try the reader and writer
+
+1. Open **Notes**, then choose **Edit source copy**.
+2. Select a word in the writer and choose **Bold** or **Italic**.
+3. Use **Insert → Table** to add a Markdown table. Edit its rows in the writing area.
+4. Choose **Preview** to see the result.
+5. Choose **Export .md** to save a separate document. The original sample stays unchanged.
+
+For a passage note, select this sentence in the reader, choose **Note**, write an explanation, and choose **Save note**.
+Scrolling the reader keeps the separate writer open.
+
+## Joint attention: share the exact source
+
+Use **Share** on a table, code block, chart, plan, or diagram.
+Copy or download its Markdown, or download context for an agent conversation.
+Table exports also offer spreadsheet-safe CSV.
+The context identifies the block's filename, source lines, and source-text hash.
+No content is uploaded automatically.
 
 ## Inline formatting
 
@@ -50,7 +70,7 @@ def fib(n):
 | Feature    | Supported | Notes            |
 | ---------- | :-------: | ---------------- |
 | GFM tables |    yes    | aligned columns  |
-| Task lists |    yes    | checkboxes       |
+| Task lists |    yes    | rendered checkboxes; reader interaction is the next step |
 | Math       |    yes    | KaTeX            |
 
 ## Math
@@ -110,4 +130,10 @@ graph LR
   b --> c[Turn]
 ```
 
-That's the tour. Customize the look in **Settings**.
+## Interaction boundary
+
+Formatting, preview, passage notes, Markdown insertion, copy, and download work in this version.
+Reader checkboxes and visual table-cell editing are not yet interactive.
+The next live-demo step will add persistent task toggles, editable tables, and artifact controls on an editable copy.
+
+Customize the reading layout under **⋯ → Reading settings…**.

@@ -1,4 +1,5 @@
 mod backup;
+mod export_text;
 
 use std::fs;
 use std::sync::Mutex;
@@ -243,7 +244,8 @@ pub fn run() {
             find_audio,
             read_audio_file,
             read_timing,
-            backup::export_reader_backup
+            backup::export_reader_backup,
+            export_text::export_reader_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running Mark");

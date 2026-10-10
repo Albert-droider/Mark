@@ -1,0 +1,28 @@
+{
+  "type": "verification",
+  "context": "BUG-001 / reader-editor shell",
+  "date": "2026-10-08",
+  "defect_class": "Author CSS exposes a hidden interactive control",
+  "grep_pattern": "display[[:space:]]*:",
+  "exclude_pattern": "\\[hidden\\]",
+  "match_count": 98,
+  "count_unit": "matching lines, not confirmed defects",
+  "sweep_scope": "src/styles/*.css",
+  "command": "grep -R -n -E 'display[[:space:]]*:' src/styles --include='*.css' | grep -v -E '^.*\\[hidden\\].*' | wc -l",
+  "resolution": "The global [hidden] display:none !important rule takes precedence over ordinary screen-control display declarations. Reviewed menus, notes, selection actions, preview and recovery. No known sibling interactive-control override remains.",
+  "patched_in_pr": [
+    "src/styles/app.css"
+  ],
+  "tracked_issues": [],
+  "exclusions": [
+    "Print rules deliberately expand source document containers and details content. These are not interactive controls.",
+    "Responsive rules intentionally hide optional labels, metadata and redundant navigation, with actions retained through menus."
+  ],
+  "regression_evidence": [
+    "scripts/reader-smoke.mjs checks computed Attach visibility and real relinking/cancellation.",
+    "scripts/reader-smoke.mjs checks menu/editor geometry at 1200x820, 800x600 and 460x340.",
+    "src/__tests__/action-popover.test.ts covers hidden state, focus, outside clicks and portal disposal.",
+    "src/__tests__/note-editor.test.ts covers independent note and preview visibility."
+  ],
+  "security_impact": "NONE identified for BUG-001"
+}

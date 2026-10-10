@@ -19,6 +19,15 @@ import type { Settings } from "../types";
 import { artifactHtml } from "../artifacts";
 import { escapeHtml, inlineText, slugify } from "../util";
 import { getSettings } from "../store";
+import { sliceSourceLines, type SourceBlock } from "../share";
+interface SourceRender { source: string; offset: number; blocks: SourceBlock[] }
+function sourceBlock(env: SourceRender, map: [number, number] | null, kind: SourceBlock["kind"]): string {
+  if (!map) return "";
+  const block: SourceBlock = { id: `block-${crypto.randomUUID()}`, kind, startLine: env.offset + map[0] + 1, endLine: env.offset + map[1], markdown: "" };
+  block.markdown = sliceSourceLines(env.source, block.startLine, block.endLine);
+  env.blocks.push(block);
+  return ` data-mark-block="${block.id}"`;
+}
 
 const CALLOUTS = ["tip", "info", "note", "warning", "danger", "success"];
 const MATH_DELIMITERS = ["dollars", "brackets"];
@@ -140,19 +149,22 @@ export class MarkdownRenderer implements DocRenderer {
     };
 
     // Fenced code: copy button + language label + highlight.js.
-    md.renderer.rules.fence = function (tokens, idx) {
+    md.renderer.rules.fence = function (tokens, idx, _options, env) {
       const token = tokens[idx];
       const info = (token.info || "").trim();
       const lang = info.split(/\s+/)[0] || "";
       const figure = artifactHtml(lang, token.content);
-      if (figure) return figure;
-      return self.codeBlock(token.content, lang);
+      const attrs = sourceBlock(env, token.map, figure ? "artifact" : "code");
+      if (figure) return `<div class="source-block"${attrs}>${figure}</div>`;
+      return self.codeBlock(token.content, lang, attrs);
     };
-
-    // Indented code blocks: highlight as plaintext with copy.
-    md.renderer.rules.code_block = function (tokens, idx) {
-      return self.codeBlock(tokens[idx].content, "");
+    md.renderer.rules.code_block = function (tokens, idx, _options, env) {
+      return self.codeBlock(tokens[idx].content, "", sourceBlock(env, tokens[idx].map, "code"));
     };
+    md.renderer.rules.table_open = function (tokens, idx, options, env, renderer) {
+      return `<div class="table-block"${sourceBlock(env, tokens[idx].map, "table")}>` + renderer.renderToken(tokens, idx, options);
+    };
+    md.renderer.rules.table_close = () => "</table></div>\n";
 
     // External links open in a new window.
     const defaultLinkOpen =
@@ -171,21 +183,26 @@ export class MarkdownRenderer implements DocRenderer {
     };
   }
 
-  private codeBlock(code: string, lang: string): string {
+  private codeBlock(code: string, lang: string, attrs = ""): string {
     const highlighted = highlightCode(code, lang);
     const label = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : `<span class="code-lang">text</span>`;
     return (
-      `<div class="code-block">` +
+      `<div class="code-block"${attrs}>` +
       `<div class="code-bar">${label}<button class="code-copy" type="button" aria-label="Copy code">copy</button></div>` +
       `<pre class="code-pre"><code class="hljs${lang ? " language-" + escapeHtml(lang) : ""}">${highlighted}</code></pre>` +
       `</div>\n`
     );
   }
 
-  render(source: string): string {
+  render(source: string): string { return this.renderWithSource(source).html; }
+
+  renderWithSource(source: string): { html: string; blocks: SourceBlock[] } {
     ensurePurifyHook();
-    const html = this.md.render(stripFrontmatter(source), { slugCount: Object.create(null) });
-    return DOMPurify.sanitize(html, PURIFY_CONFIG) as string;
+    const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
+    const close = lines[0]?.trim() === "---" ? lines.findIndex((line, i) => i > 0 && line.trim() === "---") : -1;
+    const env = { source, offset: close < 0 ? 0 : close + 1, blocks: [] as SourceBlock[], slugCount: Object.create(null) };
+    const html = this.md.render(stripFrontmatter(source), env);
+    return { html: DOMPurify.sanitize(html, PURIFY_CONFIG) as string, blocks: env.blocks };
   }
 }
 

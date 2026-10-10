@@ -210,7 +210,7 @@ describe("painting into the document", () => {
     const root = doc("<p>geest en lichaam</p>");
     const added = addHighlight(KEY, [quoteFromText("geest en lichaam", 0, 5)], "green");
     setGroupNote(KEY, added[0].group, "  dualisme  ");
-    expect(groupNote(KEY, added[0].group)).toBe("dualisme");
+    expect(groupNote(KEY, added[0].group)).toBe("  dualisme  ");
     applyHighlights(root, KEY);
     expect(root.querySelector("mark.hl")?.className).toContain("has-note");
     setGroupNote(KEY, added[0].group, "");

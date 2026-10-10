@@ -1,0 +1,35 @@
+active_flow: null
+bug_cycle:
+  current_step: 3
+  completed_steps: [1, 2, 3]
+  status: fixed
+vcs:
+  kind: git
+  branch: feat/reader-editor-shell
+  baseline: a630522
+handoff:
+  next_skill: verify-work
+  goal: Human desktop acceptance of the new reader/editor shell; storage/workspace choices before 0.5.
+requested_followup:
+  goal: Turn SAMPLE.md into a living Markdown reader/editor demo.
+  interactions:
+    - Persist task-checkbox toggles.
+    - Insert, edit, fill and clear tables.
+    - Insert and edit artifacts with real preview and export behavior.
+  safety: Start with an editable copy; do not silently change books or project files.
+verification:
+  report: specs/verifications/reader-editor-shell.md
+  frontend_passed: 182
+  frontend_skipped: 1
+  rust_passed: 12
+  browser_checks_passed: 30
+preview:
+  source: C:/Finish/MARK
+  dev_url: http://localhost:1422
+  identifier: app.mark.reader.preview
+  purpose: Separate preview; existing C:/Projects/Mark session is untouched.
+constraints:
+  - Original source books and project files remain read-only; exports create separate new files.
+  - No cloud, automatic agent upload, IDE or framework rewrite.
+  - Preserve existing drafts, annotations, raw backups and audio behavior.
+  - Workspace repository and full notebook/board storage choices remain unconfirmed.

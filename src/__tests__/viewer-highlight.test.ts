@@ -5,6 +5,8 @@ import type { LoadedFile } from "../types";
 import * as backup from "../backup";
 import { BACKUP_KEY, LEGACY_KEYS, clearStorageIssue, reportStorageIssue, storageIssues } from "../reader-storage";
 import { canonicalPath } from "../util";
+import { DraftStore } from "../drafts";
+import * as textExport from "../export-text";
 
 const KEY = "C:/docs/h05.md";
 const QUOTE = "het interactieve dualisme";
@@ -122,7 +124,7 @@ describe("viewer highlighting", () => {
     const { viewer, para } = open();
     select(para, QUOTE);
     (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
-    const input = toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement;
+    const input = document.querySelector(".note-input") as HTMLTextAreaElement;
     input.value = "  Important unsaved draft\nsecond line  ";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     viewer.root.dispatchEvent(new Event("scroll", { bubbles: true }));
@@ -136,28 +138,79 @@ describe("viewer highlighting", () => {
     const { para } = open();
     select(para, QUOTE);
     (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
-    const input = toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement;
+    const input = document.querySelector(".note-input") as HTMLTextAreaElement;
     input.value = "Selecting my own note";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowLeft", shiftKey: true, bubbles: true }));
-    expect((toolbar().querySelector(".sel-note") as HTMLElement).hidden).toBe(false);
+    expect((document.querySelector(".note-editor") as HTMLElement).hidden).toBe(false);
     expect(document.activeElement).toBe(input);
     expect(input.value).toBe("Selecting my own note");
   });
 
-  it("keeps the note editor inside a compact viewport after it expands", () => {
-    vi.stubGlobal("innerWidth", 460);
-    vi.stubGlobal("innerHeight", 340);
-    vi.spyOn(Range.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(10, 80, 150, 25));
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(254);
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
-      return this.querySelector<HTMLElement>(".sel-note")?.hidden === false ? 206 : 40;
-    });
-    const { para } = open();
+  it("keeps the document editor independent of selection-popup geometry", () => {
+    const { viewer, para } = open();
     select(para, QUOTE);
     (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
-    expect(Number.parseFloat(toolbar().style.left)).toBe(8);
-    expect(Number.parseFloat(toolbar().style.top)).toBe(113);
+    const editor = document.querySelector(".note-editor") as HTMLElement;
+    expect(editor.hidden).toBe(false);
+    expect(toolbar().hidden).toBe(true);
+    expect(viewer.root.contains(editor)).toBe(false);
+    viewer.root.dispatchEvent(new Event("scroll", { bubbles: true }));
+    expect(editor.hidden).toBe(false);
+  });
+
+  it("keeps late note saves bound to the original source when another document opens", () => {
+    const { viewer, para } = open();
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
+    const input = document.querySelector(".note-input") as HTMLTextAreaElement;
+    input.value = "Late explanation for the original book";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    viewer.render({ path: "C:/docs/other.md", name: "other.md", source: "# Other\n\nDifferent source.", kind: "markdown" });
+    (document.querySelector(".note-editor .sel-save") as HTMLElement).click();
+    expect(getHighlights(canonicalPath(KEY))[0].note).toBe(input.value);
+    expect(getHighlights(canonicalPath("C:/docs/other.md"))).toHaveLength(0);
+  });
+
+  it("edits a durable Markdown copy without changing the reader source", () => {
+    const { viewer } = open();
+    const original = viewer.file!.source;
+    viewer.createDocument(true);
+    const input = document.querySelector(".note-input") as HTMLTextAreaElement;
+    expect(input.value).toBe(original);
+    input.value += "\n## My code notes\n\nA new explanation.";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    (document.querySelector(".note-editor .sel-save") as HTMLElement).click();
+    const documents = new DraftStore().list().filter(d => d.purpose === "document");
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({ name: "h05-edited.md", text: input.value, group: null, anchors: [] });
+    expect(viewer.file!.source).toBe(original);
+    expect(viewer.root.textContent).not.toContain("My code notes");
+    expect(getHighlights(canonicalPath(KEY))).toHaveLength(0);
+  });
+
+  it("does not apply an old export confirmation to a different document draft", async () => {
+    let complete!: (value: "saved") => void;
+    const save = vi.spyOn(textExport, "exportText").mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const { viewer } = open();
+    viewer.createDocument(true);
+    (document.querySelector(".note-export") as HTMLButtonElement).click();
+    expect(save).toHaveBeenCalledTimes(1);
+    viewer.createDocument();
+    complete("saved");
+    await Promise.resolve();
+    expect(document.querySelector(".note-editor .sel-status")?.textContent).toContain("Document draft saved locally");
+    expect(document.querySelector(".note-editor .sel-status")?.textContent).not.toContain("Markdown saved to a new file");
+  });
+
+  it("lists saved passage notes separately from the selection popup", () => {
+    const added = addHighlight(canonicalPath(KEY), [{ text: QUOTE, prefix: "", suffix: "" }], "yellow");
+    setGroupNote(canonicalPath(KEY), added[0].group, "# My own explanation\n\nA saved note.");
+    const { viewer } = open();
+    viewer.openNotes();
+    expect(document.querySelector(".note-list")?.textContent).toContain("My own explanation");
+    (document.querySelector(".note-list-entry") as HTMLButtonElement).click();
+    expect((document.querySelector(".note-input") as HTMLTextAreaElement).value).toContain("A saved note.");
   });
 
   it("keeps missing-passage notes reachable outside the reading article", () => {
@@ -173,6 +226,41 @@ describe("viewer highlighting", () => {
     expect(recovery.textContent).toContain("My explanation must survive.");
     expect(viewer.root.contains(recovery)).toBe(false);
     expect(viewer.root.textContent).not.toContain("My explanation must survive.");
+  });
+
+  it("requires Attach confirmation even when a passage was selected before recovery", () => {
+    const key = canonicalPath(KEY);
+    const added = addHighlight(key, [{ text: "lost passage", prefix: "", suffix: "" }], "pink");
+    setGroupNote(key, added[0].group, "Keep this note.");
+    const { viewer, para } = open();
+    select(para, QUOTE);
+    viewer.recoveryButton.click();
+    [...document.querySelectorAll<HTMLButtonElement>(".annotation-recovery button")]
+      .find(button => button.textContent === "Attach to selected passage")!.click();
+    expect(getHighlights(key)[0].text).toBe("lost passage");
+    const attach = toolbar().querySelector<HTMLButtonElement>(".sel-relink")!;
+    expect(attach.hidden).toBe(false);
+    expect(attach.disabled).toBe(false);
+    attach.click();
+    expect(getHighlights(key)[0]).toEqual(expect.objectContaining({ text: QUOTE, group: added[0].group, color: "pink", note: "Keep this note." }));
+  });
+
+  it("cancels a pending Attach with Escape without changing the original note", () => {
+    const key = canonicalPath(KEY);
+    const added = addHighlight(key, [{ text: "lost passage", prefix: "", suffix: "" }], "pink");
+    setGroupNote(key, added[0].group, "Keep this note.");
+    const { viewer, para } = open();
+    viewer.recoveryButton.click();
+    [...document.querySelectorAll<HTMLButtonElement>(".annotation-recovery button")]
+      .find(button => button.textContent === "Attach to selected passage")!.click();
+    select(para, QUOTE);
+    const attach = toolbar().querySelector<HTMLButtonElement>(".sel-relink")!;
+    expect(attach.hidden).toBe(false);
+    expect(attach.disabled).toBe(false);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    select(para, QUOTE);
+    expect(attach.hidden).toBe(true);
+    expect(getHighlights(key)).toEqual([expect.objectContaining({ group: added[0].group, text: "lost passage", color: "pink", note: "Keep this note." })]);
   });
 
   it("clears a failed export warning after retry without clearing other storage failures", async () => {
@@ -210,9 +298,9 @@ describe("viewer highlighting", () => {
       const { viewer, para } = open();
       select(para, QUOTE);
       (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
-      const input = toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement;
+      const input = document.querySelector(".note-input") as HTMLTextAreaElement;
       input.value = "Kern van het argument.";
-      (toolbar().querySelector(".sel-save") as HTMLElement).click();
+      (document.querySelector(".note-editor .sel-save") as HTMLElement).click();
 
       const mark = viewer.root.querySelector("mark.has-note") as HTMLElement;
       const tip = document.querySelector(".note-tip") as HTMLElement;
@@ -252,8 +340,8 @@ describe("viewer highlighting", () => {
 
       plain.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
-      (toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement).value = "even";
-      (toolbar().querySelector(".sel-save") as HTMLElement).click();
+      (document.querySelector(".note-input") as HTMLTextAreaElement).value = "even";
+      (document.querySelector(".note-editor .sel-save") as HTMLElement).click();
       const mark = viewer.root.querySelector("mark.has-note") as HTMLElement;
       expect(mark).toBeTruthy();
       mark.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));

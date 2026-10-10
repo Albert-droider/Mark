@@ -77,11 +77,11 @@ export class AnnotationRecovery {
     if (state.drafts.length) this.items.append(el("h3", {}, ["Drafts"]));
     for (const draft of state.drafts) {
       const item = el("section", { class: "recovery-item", "data-draft-id": draft.id }, [
-        el("small", {}, [draft.fileKey]),
+        el("small", {}, [draft.purpose === "document" ? draft.name! : draft.fileKey]),
         el("blockquote", {}, [draft.anchors.map((a) => a.text).join("")]),
         el("p", { class: "recovery-note" }, [draft.text || "(empty draft)"]),
         el("div", { class: "recovery-actions" }, [
-          this.button(draft.fileKey === state.fileKey ? "Resume / retry" : "Open source to resume", () => this.actions.resume(draft)),
+          this.button(draft.purpose === "document" || draft.fileKey === state.fileKey ? "Resume / retry" : "Open source to resume", () => this.actions.resume(draft)),
           this.button("Discard draft", () => this.actions.discard(draft)),
         ]),
       ]);

@@ -10,6 +10,9 @@ export interface NoteDraft {
   text: string;
   revision: number;
   updatedAt: number;
+  /** Standalone Markdown/edit-copy documents, not annotations or a workspace migration. */
+  purpose?: "document";
+  name?: string;
 }
 interface DraftData { version: 1; items: NoteDraft[] }
 function validDraft(value: unknown): value is NoteDraft {
@@ -19,7 +22,9 @@ function validDraft(value: unknown): value is NoteDraft {
     && Array.isArray(value.anchors) && value.anchors.every(isAnchor)
     && typeof value.text === "string" && typeof value.revision === "number"
     && Number.isInteger(value.revision) && value.revision >= 0
-    && typeof value.updatedAt === "number" && Number.isFinite(value.updatedAt);
+    && typeof value.updatedAt === "number" && Number.isFinite(value.updatedAt)
+    && (value.purpose === undefined || (value.purpose === "document" && value.group === null
+      && value.anchors.length === 0 && typeof value.name === "string" && !!value.name.trim()));
 }
 function validData(value: unknown): value is DraftData {
   return isRecord(value) && value.version === 1 && Array.isArray(value.items)
@@ -29,6 +34,11 @@ function readData(): DraftData { return readStored(DRAFT_KEY, validData, () => (
 function copy(draft: NoteDraft): NoteDraft { return { ...draft, anchors: draft.anchors.map((a) => ({ ...a })) }; }
 export function newDraft(fileKey: string, group: string | null, anchors: Anchor[], text = ""): NoteDraft {
   return { id: newId(), fileKey, group, anchors, text, revision: 0, updatedAt: Date.now() };
+}
+
+export function newDocumentDraft(name = "Untitled.md", text = ""): NoteDraft {
+  const draft = newDraft(`document:${newId()}`, null, [], text);
+  return { ...draft, purpose: "document", name };
 }
 
 /** Pending copies remain available in this session when storage rejects a write.

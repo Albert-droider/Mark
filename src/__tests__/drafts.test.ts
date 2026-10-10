@@ -1,12 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DRAFT_KEY, DraftStore, newDraft } from "../drafts";
-import { addHighlight, getHighlights, saveHighlightNote } from "../highlights";
+import { DRAFT_KEY, DraftStore, newDraft, newDocumentDraft } from "../drafts";
+import { addHighlight, getHighlights, groupNote, saveHighlightNote, setGroupNote } from "../highlights";
 
 const anchor = { text: "passage", prefix: "before ", suffix: " after" };
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
 describe("durable note drafts", () => {
+  it("recovers standalone documents without pretending they are annotations", () => {
+    const draft = newDocumentDraft("README-edited.md", "# My document\n\n    code();\n");
+    new DraftStore().save(draft);
+    expect(new DraftStore().list()[0]).toEqual(draft);
+    expect(draft).toMatchObject({ purpose: "document", name: "README-edited.md", group: null, anchors: [] });
+  });
+  it("preserves unsupported document drafts without replacing their bytes", () => {
+    const raw = JSON.stringify({ version: 1, items: [{ ...newDocumentDraft(), purpose: "unknown-future-purpose" }] });
+    localStorage.setItem(DRAFT_KEY, raw);
+    expect(() => new DraftStore().save(newDraft("book.md", null, [anchor]))).toThrow();
+    expect(localStorage.getItem(DRAFT_KEY)).toBe(raw);
+  });
+  it("keeps Markdown indentation when a passage note is saved", () => {
+    const text = "    const answer = 42;\n\nAn explanation.\n";
+    saveHighlightNote("book.md", "group", [anchor], text);
+    expect(getHighlights("book.md")[0].note).toBe(text);
+    expect(groupNote("book.md", "group")).toBe(text);
+    setGroupNote("book.md", "group", text + "\n");
+    expect(groupNote("book.md", "group")).toBe(text + "\n");
+  });
   it("recovers exact text and a copied anchor after a fresh store instance", () => {
     const store = new DraftStore();
     const draft = newDraft("book.md", null, [{ ...anchor }], "  Explanation\nwith unicode ✓  ");

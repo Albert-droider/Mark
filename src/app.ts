@@ -1,4 +1,5 @@
 import { Book } from "./book";
+import { ActionPopover } from "./action-popover";
 import { AudioBar } from "./audioplayer";
 import { Karaoke } from "./karaoke";
 import { loadTiming } from "./files";
@@ -48,6 +49,9 @@ export class App {
   private recent: RecentFiles;
 
   private chrome: HTMLElement;
+  private fileMenu!: ActionPopover;
+  private viewMenu!: ActionPopover;
+  private notesBtn!: HTMLButtonElement;
   private fileBlock: HTMLElement;
   private fileName: HTMLElement;
   private fileMeta: HTMLElement;
@@ -84,6 +88,7 @@ export class App {
     this.viewer.onMarks = () => {
       if (this.viewer.file) this.karaoke.rebuild(this.viewer.root);
     };
+    this.viewer.onNotesVisibility = open => this.notesBtn?.setAttribute("aria-expanded", String(open));
 
     this.workspace = el("main", { class: "workspace", tabindex: "-1" }, []);
     this.session = new ReadingSession(this.workspace, {
@@ -109,9 +114,9 @@ export class App {
     this.progressBar = el("span", {}, []);
     this.progress.append(this.progressBar);
 
-    this.fileName = el("span", { class: "file-name" }, []);
-    this.fileMeta = el("span", { class: "file-meta" }, []);
-    this.fileBlock = el("div", { class: "file-block hidden", "data-tauri-drag-region": "" }, [this.fileName, this.fileMeta]);
+    this.fileName = el("span", { class: "file-name", "data-tauri-drag-region": "" }, []);
+    this.fileMeta = el("span", { class: "file-meta", "data-tauri-drag-region": "" }, []);
+    this.fileBlock = el("div", { class: "file-block", "data-tauri-drag-region": "" }, [this.fileName, this.fileMeta]);
     this.themeBtn = el("button", { class: "icon-btn theme-btn", type: "button", title: `Light or dark (${shortcutKeys("theme")})`, "aria-label": "Light or dark" }, [this.themeIcon()]);
     this.settingsBtn = el("button", { class: "icon-btn settings-btn", type: "button", title: `Settings (${shortcutKeys("settings")})`, "aria-label": "Settings" }, [icon("settings")]);
     this.contentsBtn = el("button", {
@@ -180,13 +185,38 @@ export class App {
       el("span", { class: "brand-mark", "data-tauri-drag-region": "" }, ["M"]),
       el("span", { class: "brand-name", "data-tauri-drag-region": "" }, ["Mark"]),
     ]);
-    const spacer = el("div", { class: "spacer", "data-tauri-drag-region": "" }, []);
-    const openBtn = el("button", { class: "btn primary open-btn", type: "button", title: `Open file (${shortcutKeys("open")})` }, ["Open"]);
-    openBtn.addEventListener("click", () => { void this.openPicker(); });
-    this.chrome.append(
-      brand, this.fileBlock, spacer,
-      this.contentsBtn, this.recent.wrap, openBtn, this.layoutSwitch, this.themeBtn, this.settingsBtn, this.closeBtn,
-    );
+    const fileButton = el("button", { class: "icon-btn file-menu-btn", type: "button", "aria-label": "File actions" }, ["File", icon("chevron-down")]);
+    const openBtn = el("button", { class: "btn primary open-btn", type: "button", title: `Open file (${shortcutKeys("open")})` }, ["Open document…"]);
+    openBtn.addEventListener("click", () => { this.fileMenu.hide(); void this.openPicker(); });
+    this.closeBtn.textContent = "Close document";
+    this.recent.button.textContent = "Recent documents";
+    const documentAction = (label: string, className: string, action: () => void): HTMLButtonElement => {
+      const button = el("button", { class: `btn ${className}`, type: "button" }, [label]);
+      button.addEventListener("click", () => { this.fileMenu.hide(); action(); }); return button;
+    };
+    this.fileMenu = new ActionPopover(fileButton, [
+      el("h2", { class: "menu-heading" }, ["Documents"]), openBtn, this.recent.wrap, this.closeBtn,
+      documentAction("New Markdown note", "new-note-btn", () => this.viewer.createDocument()),
+      documentAction("Edit source copy…", "edit-copy-btn", () => this.viewer.createDocument(true)),
+      el("hr"), this.viewer.recoveryButton,
+    ], "file-actions");
+    this.viewer.recoveryButton.addEventListener("click", () => this.fileMenu.hide());
+    const viewButton = el("button", { class: "icon-btn view-menu-btn", type: "button", "aria-label": "Reading and appearance" }, [icon("more")]);
+    const find = el("button", { class: "icon-btn find-btn", type: "button" }, [icon("search"), "Find in document"]);
+    find.addEventListener("click", () => { this.viewMenu.hide(); this.openFind(); });
+    this.themeBtn.append(el("span", {}, ["Light / dark"]));
+    this.settingsBtn.append(el("span", {}, ["Reading settings…"]));
+    const print = el("button", { class: "icon-btn print-btn", type: "button" }, ["Print document…"]);
+    print.addEventListener("click", () => { this.viewMenu.hide(); window.print(); });
+    this.viewMenu = new ActionPopover(viewButton, [
+      el("h2", { class: "menu-heading" }, ["Reading"]), this.layoutSwitch, this.contentsBtn, find,
+      el("hr"), el("h2", { class: "menu-heading" }, ["Appearance"]), this.themeBtn, this.settingsBtn, print,
+    ], "reading-actions");
+    this.notesBtn = el("button", { class: "icon-btn notes-btn", type: "button", "aria-label": "Notes", "aria-expanded": "false" }, [
+      icon("notes"), el("span", { class: "notes-label" }, ["Notes"]),
+    ]);
+    this.notesBtn.addEventListener("click", () => this.viewer.openNotes());
+    this.chrome.append(brand, this.fileMenu.wrap, this.fileBlock, this.notesBtn, this.viewMenu.wrap);
     if (isTauri) this.chrome.append(this.buildWindowControls());
   }
 
@@ -230,10 +260,10 @@ export class App {
   }
 
   private wire(): void {
-    this.settingsBtn.addEventListener("click", () => this.panel.toggle());
+    this.settingsBtn.addEventListener("click", () => { this.viewMenu.hide(); this.panel.toggle(); });
     this.themeBtn.addEventListener("click", () => this.toggleTheme());
-    this.contentsBtn.addEventListener("click", () => this.toggleOutline());
-    this.closeBtn.addEventListener("click", () => this.closeFile());
+    this.contentsBtn.addEventListener("click", () => { this.viewMenu.hide(); this.toggleOutline(); });
+    this.closeBtn.addEventListener("click", () => { this.fileMenu.hide(); this.closeFile(); });
     this.recent.button.addEventListener("click", (e) => {
       e.stopPropagation();
       this.recent.toggle();
@@ -384,6 +414,7 @@ export class App {
         title: item.id === "book" ? "Two pages, like a reader" : "Scroll the file",
       }, [item.label]);
       button.addEventListener("click", () => {
+        this.viewMenu.hide();
         if (getSettings().layout !== item.id) updateSettings({ layout: item.id });
       });
       wrap.append(button);
@@ -435,6 +466,8 @@ export class App {
   private dismiss(): void {
     if (!this.find.hidden) { this.find.close(); return; }
     if (this.recent.isOpen()) { this.recent.close(); return; }
+    if (this.fileMenu.isOpen) { this.fileMenu.hide(true); return; }
+    if (this.viewMenu.isOpen) { this.viewMenu.hide(true); return; }
     if (this.panel.isOpen) { this.panel.setOpen(false); return; }
     if (this.outline.isOpen) {
       this.outline.setOpen(false);
@@ -450,7 +483,7 @@ export class App {
       case "contents": this.toggleOutline(); break;
       case "reload": void this.reloadCurrent(); break;
       case "close": this.closeFile(); break;
-      case "recent": this.recent.toggle(); break;
+      case "recent": this.fileMenu.show(); this.recent.toggle(); break;
       case "theme": this.toggleTheme(); break;
       case "layout": this.toggleLayout(); break;
       case "settings": this.panel.toggle(); break;
@@ -581,6 +614,7 @@ export class App {
     document.title = `${f.name} \u00b7 Mark`;
     if (f.path) pushRecent(f.path);
     this.recent.refresh();
+    this.fileMenu.hide(); this.viewMenu.hide();
     this.workspace.classList.add("has-file");
     this.refreshChrome();
     this.paint(this.session.place());
@@ -660,7 +694,10 @@ export class App {
     const open = !!this.viewer.file;
     this.contentsBtn.classList.toggle("hidden", !open);
     this.closeBtn.classList.toggle("hidden", !open);
-    this.fileBlock.classList.toggle("hidden", !open);
+    this.fileBlock.classList.toggle("no-document", !open);
+    if (!open) this.fileName.textContent = "Read · write · think";
+    this.viewMenu.root.querySelectorAll<HTMLButtonElement>(".find-btn,.print-btn").forEach(button => { button.disabled = !open; });
+    this.fileMenu.root.querySelector<HTMLButtonElement>(".edit-copy-btn")!.disabled = !open;
     this.progress.classList.toggle("hidden", !open);
     const showOutline = open && this.outline.isOpen;
     this.contentsBtn.classList.toggle("active", showOutline);
@@ -768,7 +805,7 @@ export class App {
   }
 
   private refreshThemeIcon(): void {
-    this.themeBtn.replaceChildren(this.themeIcon());
+    this.themeBtn.replaceChildren(this.themeIcon(), el("span", {}, ["Light / dark"]));
   }
 
   private toast(msg: string): void {

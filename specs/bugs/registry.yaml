@@ -1,0 +1,8 @@
+bugs:
+  - bug_id: BUG-001
+    status: fixed
+    severity: medium
+    priority: P0
+    scope: reader-ui
+    summary: CSS exposes Attach without a relinking target.
+    file: specs/bugs/BUG-001-attach.md

@@ -6,9 +6,14 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+/* Component display rules must never expose an unavailable action. */
+[hidden] { display: none !important; }
+
 :root {
   --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --radius: 8px;
+  --control-height: 32px;
+  --ui-size: 13px;
 }
 
 html, body {
@@ -53,7 +58,7 @@ body {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   height: 48px;
   padding: 0 12px;
   background: var(--chrome-bg);
@@ -71,6 +76,7 @@ body {
 
 .window-controls {
   display: flex;
+  flex: 0 0 auto;
   align-self: stretch;
   margin: 0 -12px 0 4px;
 }
@@ -80,6 +86,7 @@ body {
   background: transparent;
   color: var(--chrome-fg);
   width: 46px;
+  flex: 0 0 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -91,6 +98,7 @@ body {
 
 .brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 8px;
   font-weight: 600;
@@ -117,11 +125,14 @@ body {
 
 .file-block {
   display: flex;
+  flex: 1 1 0;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  max-width: 46vw;
+  overflow: hidden;
 }
+.file-block.no-document { color: var(--muted); }
+.file-block .file-name { min-width: 0; }
 .file-name {
   font-size: 13px;
   overflow: hidden;
@@ -141,6 +152,32 @@ body {
 
 .spacer { flex: 1 1 auto; min-width: 8px; }
 
+.action-wrap { flex: 0 0 auto; }
+.action-popover {
+  position: fixed; z-index: 65; width: 280px; max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 64px); overflow: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--chrome-bg); color: var(--chrome-fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .16);
+}
+.action-popover > button, .action-popover .recent-btn { width: 100%; justify-content: flex-start; }
+.action-popover hr { width: 100%; border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.menu-heading { margin: 4px 8px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.action-popover .layout-switch { justify-content: stretch; }
+.action-popover .layout-opt { flex: 1; height: 28px; }
+.action-popover .recent-menu { position: static; width: 100%; min-width: 0; max-height: 180px; box-shadow: none; border: 0; }
+.action-popover .annotation-toggle { position: static; height: var(--control-height); font-size: var(--ui-size); }
+.notes-btn { gap: 6px; }
+.file-menu-btn .icon { width: 12px; height: 12px; }
+@media (max-width: 900px) { .file-meta, .brand-name { display: none; } }
+@media (max-width: 600px) {
+  .chrome { gap: 4px; padding: 0 8px; }
+  .notes-label { display: none; }
+  .notes-btn, .view-menu-btn { padding: 0 8px; }
+  .window-controls { margin-right: -8px; margin-left: 0; }
+}
+
 .icon {
   width: 16px;
   height: 16px;
@@ -154,8 +191,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 32px;
-  min-width: 32px;
+  height: var(--control-height);
+  min-width: var(--control-height);
+  flex: 0 0 auto;
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -179,7 +217,8 @@ button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-in
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
+  height: var(--control-height);
+  flex: 0 0 auto;
   padding: 0 12px;
   border-radius: var(--radius);
   border: 1px solid var(--chrome-border);
@@ -902,9 +941,7 @@ button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-in
 .sel-green { background: var(--hl-green, #d7e8c8); }
 .sel-pink { background: var(--hl-pink, #f3d0d4); }
 .sel-pop:not(.existing) .sel-remove { display: none; }
-.sel-note-btn, .sel-remove, .sel-save { height: 28px; padding: 0 10px; font-size: 12px; }
-.sel-note { display: flex; flex-direction: column; gap: 6px; width: 240px; }
-.sel-note[hidden] { display: none; }
+.sel-row .btn { height: var(--control-height); padding: 0 10px; font-size: var(--ui-size); }
 .sel-status { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted); }
 
 /* Optional recovery surface; does not affect article measure or pagination. */

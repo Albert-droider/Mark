@@ -1,9 +1,10 @@
 # MARK — van reader naar lees- en denkwerkplek
 
-**Status:** stappen 0.1–0.4 geïmplementeerd en automatisch/browser-gecontroleerd; onafhankelijke review: OK met kanttekeningen. Native handmatige acceptatie volgt. Stap 0.5 en workspace-features wachten op de open keuzes uit §8.
-**Checkpoint:** zie [verificatie en morgen-checklist](specs/verifications/reader-foundation.md).
+**Status:** stappen 0.1–0.4 geïmplementeerd; onafhankelijke review van dat fundament: OK met kanttekeningen. De nieuwe reader/editor-shell heeft automatische/browser-verificatie en parent self-review, geen nieuwe onafhankelijke review. Native handmatige acceptatie volgt. Stap 0.5 en de volledige workspace wachten op de keuzes uit §8.
+**Checkpoints:** [reader-fundament](specs/verifications/reader-foundation.md) en [reader/editor-shell](specs/verifications/reader-editor-shell.md).
+**Nieuwe shell:** Attach hersteld, gegroepeerde topbar, afzonderlijk Markdown-schrijfvlak, vrije documentconcepten, bronkopie bewerken en expliciet Markdown/CSV/agentcontext delen. Dit brengt delen van 1.2/1.3 naar voren; een volledig notebook, bibliotheek, zoekindex of board is nog niet gebouwd.
 **Auditbasis:** MARK 0.4.0, `main` op commit `c8fb838`.
-**Doel van dit document:** de afgesproken richting bewaren en de bouw in kleine, toetsbare stappen hervatten nadat het werk aan de pi CLI klaar is.
+**Doel van dit document:** de afgesproken richting bewaren en de bouw in kleine, toetsbare stappen voortzetten.
 
 > MARK is een rustige lees- en denkwerkplek: van bron naar eigen inzicht, en van inzicht naar toepassing.
 

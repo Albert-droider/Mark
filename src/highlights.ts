@@ -92,24 +92,26 @@ export function addHighlight(fileKey: string, anchors: Anchor[], color: Highligh
 
 export function setGroupNote(fileKey: string, group: string, note: string): void {
   if (!fileKey || !group) return;
-  const trimmed = note.trim();
+  const content = note.trim() ? note : "";
   const all = readAll();
   const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
   if (!list.some((h) => h.group === group)) throw new ReaderStorageError(KEY, "write", "This annotation no longer exists. Its draft is still available.");
-  all[fileKey] = list.map((h) => (h.group === group ? { ...h, note: trimmed } : h));
+  all[fileKey] = list.map((h) => (h.group === group ? { ...h, note: content } : h));
   writeAll(all);
 }
 
 /** One acknowledged write for both a new highlight and its note. A reserved
  *  group identity makes retries safe when saving succeeded but draft cleanup did not. */
 export function saveHighlightNote(fileKey: string, group: string, anchors: Anchor[] | null, note: string): void {
+  // Indentation and trailing newlines are meaningful Markdown, not disposable whitespace.
+  const content = note.trim() ? note : "";
   const all = readAll();
   const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
   if (list.some((h) => h.group === group)) {
-    all[fileKey] = list.map((h) => h.group === group ? { ...h, note: note.trim() } : h);
+    all[fileKey] = list.map((h) => h.group === group ? { ...h, note: content } : h);
   } else {
     if (!anchors?.length) throw new ReaderStorageError(KEY, "write", "This annotation no longer exists. Its draft is still available.");
-    all[fileKey] = [...list, ...anchors.filter((a) => a.text.trim()).map((a) => ({ ...a, id: newId(), group, color: "yellow" as const, note: note.trim() }))];
+    all[fileKey] = [...list, ...anchors.filter((a) => a.text.trim()).map((a) => ({ ...a, id: newId(), group, color: "yellow" as const, note: content }))];
   }
   writeAll(all);
 }
@@ -134,7 +136,7 @@ export function setGroupColor(fileKey: string, group: string, color: HighlightCo
 }
 
 export function groupNote(fileKey: string, group: string): string {
-  return getHighlights(fileKey).find((h) => h.group === group)?.note?.trim() ?? "";
+  return getHighlights(fileKey).find((h) => h.group === group)?.note ?? "";
 }
 
 export function removeHighlightGroup(fileKey: string, group: string): void {
