@@ -1,0 +1,70 @@
+/* Print / PDF ------------------------------------------------------------ */
+/* Two traps to handle: the app chrome would print along with the document, and
+   a dark theme prints light-on-dark (== unreadable, or a solid black page).
+   Forcing a light ink set on :root fixes both, whatever theme is active. */
+@media print {
+  :root {
+    --bg: #fff; --paper: #fff; --desk: #fff; --fg: #222; --ink: #000; --heading: #000;
+    --muted: #555; --link: #000; --border: #ccc; --quote: #333;
+    --accent: #000; --primary: #111; --primary-fg: #fff;
+    --code-bg: #f4f4f4; --code-block-bg: #f8f8f8;
+    --syn-comment: #6a737d; --syn-keyword: #d73a49; --syn-string: #032f62;
+    --syn-number: #005cc5; --syn-fn: #6f42c1; --syn-type: #e36209;
+    --syn-attr: #005cc5; --syn-tag: #22863a; --syn-punct: #24292e;
+  }
+
+  @page { margin: 18mm 16mm; }
+
+  /* Chrome never belongs on paper. */
+  .chrome, .settings-panel, .toast, .drop-overlay, .empty-state, .code-copy,
+  .find-bar, .outline, .read-progress, .zoom-toast, .page-turn, .folio, .audio-bar, .sel-pop, .note-tip, .annotation-toggle, .annotation-recovery, .sheet::before, .sheet::after { display: none !important; }
+
+  .desk, .book-row, .sheet, .sheet .content {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    column-width: auto !important;
+    column-count: auto !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  html, body, #app { height: auto; overflow: visible; background: #fff; }
+  .workspace { overflow: visible; height: auto; }
+  .content { max-width: none; padding: 0; margin: 0; }
+
+  /* Book behaviour: headings stay with what follows, blocks don't split
+     across pages, and each top-level chapter starts a fresh page. */
+  .markdown-body :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; page-break-after: avoid; }
+  .markdown-body :is(p, li, blockquote) { orphans: 2; widows: 2; }
+  .markdown-body :is(pre, .code-block, blockquote, details, .callout, img, .katex-display) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .markdown-body h1 { break-before: page; page-break-before: always; }
+  .markdown-body h1:first-child { break-before: auto; page-break-before: auto; }
+
+  /* A table taller than one page cannot honour break-inside:avoid — let it flow,
+     and drop the scroll container so wide tables don't print clipped. */
+  .markdown-body table { display: table; width: 100%; overflow: visible; }
+  .markdown-body .code-block { overflow: visible; }
+  .markdown-body .code-pre { overflow: visible; white-space: pre-wrap; }
+
+  /* <details> prints collapsed otherwise — the content is the point. */
+  .markdown-body details > *:not(summary) { display: block !important; }
+
+  /* The selection toolbar is interactive chrome, never part of the document. */
+  .hl-toolbar { display: none !important; }
+
+  /* Paper has no cursor: show where an external link goes. */
+  .markdown-body a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #555;
+    word-break: break-all;
+  }
+}

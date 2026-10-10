@@ -1,18 +1,40 @@
-# MARK reader/editor demo
+# MARK living reader demo
 
-A public sample for books, study notes, READMEs, and code knowledge.
-The reader keeps this source read-only. Use an editable copy to try the writing controls.
+A public page for books, study notes, READMEs, and code knowledge.
+The reading page is also the editing surface. No live copy is needed.
 
-## Try the reader and writer
+## Try the interactive reader
 
-1. Open **Notes**, then choose **Edit source copy**.
-2. Select a word in the writer and choose **Bold** or **Italic**.
-3. Use **Insert → Table** to add a Markdown table. Edit its rows in the writing area.
-4. Choose **Preview** to see the result.
-5. Choose **Export .md** to save a separate document. The original sample stays unchanged.
+1. Tick a task below. MARK changes the Markdown for that task.
+2. Double-click a table cell and type there. The same table stays on screen.
+3. Press **Enter** or click outside the cell to finish. **Esc** restores that cell.
+4. Select a passage, choose **Note**, and write in the floating reader control.
+5. Choose **Done**. Hover its subtle underline to read the note. No paragraph moves.
+6. Use **File → Version history…** to inspect an earlier version. Restore requires confirmation.
+7. Use **File → Export current Markdown…** to send the current document to someone else.
 
-For a passage note, select this sentence in the reader, choose **Note**, write an explanation, and choose **Save note**.
-Scrolling the reader keeps the separate writer open.
+Changed Markdown saves every **5 seconds**. Idle documents do not create duplicate versions.
+Older versions are kept for **30 days**. MARK never expires the latest version or deletes the working file.
+Old snapshots are cleaned up when the document or its history is used.
+
+In the desktop app, edits update the opened Markdown file after a version snapshot is saved.
+In a browser, MARK keeps a local working document. Export is needed to change or send the uploaded file.
+Do not close MARK if **Not saved** is shown. Export the current Markdown and retry first.
+
+## Live acceptance checklist
+
+- [ ] Tick this task and reopen the same document.
+- [ ] Double-click a table cell, type, and wait for Saved.
+- [ ] Inspect Version history and restore an earlier version.
+- [ ] Add a passage note, then hover its underline without moving the text.
+- [ ] Copy code through its clipboard icon. No code is executed.
+- [ ] Download the current table as Markdown, CSV, and agent context.
+- [ ] Export the current document and check that the edits are included.
+
+Notes live in this same Markdown file and follow the same autosave and version history.
+MARK hides their source callouts from the reading flow. Only the underlined passage and hover reveal them.
+**Notes** lists file-owned notes, including ones whose passage can no longer be located.
+Creating a new Markdown file in an editor is a later feature. Existing legacy drafts remain recoverable.
 
 ## Joint attention: share the exact source
 
@@ -24,7 +46,7 @@ No content is uploaded automatically.
 
 ## Inline formatting
 
-Inline `code`, **bold**, *italic*, ~~strikethrough~~, ==highlight==, and a [link](https://example.com).
+Inline `code`, **bold**, *italic*, ~~strikethrough~~, ==highlight==, and the [Example site](https://example.com).
 Emoji: :smile: :rocket: :+1: H~2~O and E=mc^2^.
 
 > A blockquote line.
@@ -70,7 +92,7 @@ def fib(n):
 | Feature    | Supported | Notes            |
 | ---------- | :-------: | ---------------- |
 | GFM tables |    yes    | aligned columns  |
-| Task lists |    yes    | rendered checkboxes; reader interaction is the next step |
+| Task lists |    yes    | direct toggles update the current Markdown |
 | Math       |    yes    | KaTeX            |
 
 ## Math
@@ -132,8 +154,16 @@ graph LR
 
 ## Interaction boundary
 
-Formatting, preview, passage notes, Markdown insertion, copy, and download work in this version.
-Reader checkboxes and visual table-cell editing are not yet interactive.
-The next live-demo step will add persistent task toggles, editable tables, and artifact controls on an editable copy.
+Checkpoints and supported table cells change the current Markdown. Source writes are versioned.
+Use **Edit Markdown** for structural table changes and for code or artifact source.
+Code is displayed, never executed. Table values are not evaluated as spreadsheet formulas.
 
-Customize the reading layout under **⋯ → Reading settings…**.
+Clipboard icons offer the current block as Markdown and agent context. Tables also offer CSV.
+The code icon occupies the old Copy slot. Table and artifact icons sit below their content.
+Exports create separate files. Browser downloads are requests; native export confirms its file write.
+
+A failed save keeps the changed page in memory and blocks document switching.
+Export before closing if **Not saved** remains visible. Version history is not an independent backup.
+**Recovery & backup** preserves annotation and note data; export the current Markdown separately.
+
+Customize the reading layout under **View → Reading settings…**.

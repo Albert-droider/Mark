@@ -1,0 +1,201 @@
+/* Chrome (top bar) ------------------------------------------------------- */
+.chrome {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border-bottom: 1px solid var(--chrome-border);
+  position: relative;
+  z-index: 30;
+}
+/* The OS title bar is off (tauri.conf.json → decorations:false), so this header is
+   the drag handle: Tauri only honours the data-tauri-drag-region attribute, not
+   -webkit-app-region (that one is Electron-only and does nothing here). Every
+   non-button child of the bar needs the attribute, since Tauri tests the event
+   target and not its ancestors. */
+.chrome button, .chrome .recent-menu { -webkit-app-region: no-drag; }
+
+.window-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin: 0 -12px 0 4px;
+}
+.win-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--chrome-fg);
+  width: 46px;
+  flex: 0 0 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0;
+}
+.win-btn:hover { background: color-mix(in srgb, var(--chrome-fg) 12%, transparent); }
+.win-btn.win-close:hover { background: #e81123; color: #fff; }
+
+.brand {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+.brand-name {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-size: 15px;
+}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--primary, #171717);
+  color: var(--primary-fg, #fafafa);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.file-block {
+  display: flex;
+  flex: 1 1 0;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.file-block.no-document { color: var(--muted); }
+.file-block .file-name { min-width: 0; }
+.file-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-meta {
+  flex: none;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  background: var(--hover, #f5f5f5);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spacer { flex: 1 1 auto; min-width: 8px; }
+
+.action-wrap { flex: 0 0 auto; }
+.action-popover {
+  position: fixed; z-index: 65; width: 280px; max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 64px); overflow: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--chrome-bg); color: var(--chrome-fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .16);
+}
+.action-popover > button, .action-popover .recent-btn { width: 100%; justify-content: flex-start; }
+.action-popover hr { width: 100%; border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.menu-heading { margin: 4px 8px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.action-popover .layout-switch { justify-content: stretch; }
+.action-popover .layout-opt { flex: 1; height: 28px; }
+.action-popover .recent-menu { position: static; width: 100%; min-width: 0; max-height: 180px; box-shadow: none; border: 0; }
+.action-popover .annotation-toggle { position: static; height: var(--control-height); font-size: var(--ui-size); }
+.notes-btn { gap: 6px; }
+.file-menu-btn .icon { width: 12px; height: 12px; }
+@media (max-width: 900px) { .file-meta, .brand-name { display: none; } }
+@media (max-width: 600px) {
+  .chrome { gap: 4px; padding: 0 8px; }
+  .notes-label { display: none; }
+  .notes-btn, .view-menu-btn { padding: 0 8px; }
+  .window-controls { margin-right: -8px; margin-left: 0; }
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  pointer-events: none;
+}
+
+.icon-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-height);
+  min-width: var(--control-height);
+  flex: 0 0 auto;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--chrome-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.icon-btn:hover { background: var(--hover, #f5f5f5); }
+.icon-btn.active { background: var(--hover, #f5f5f5); color: var(--fg); }
+button:focus-visible, .select:focus-visible, .text-input:focus-visible, .find-input:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height);
+  flex: 0 0 auto;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--chrome-border);
+  background: var(--bg);
+  color: var(--chrome-fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn:hover { background: var(--hover, #f5f5f5); }
+.btn.primary {
+  background: var(--primary, #171717);
+  border-color: var(--primary, #171717);
+  color: var(--primary-fg, #fafafa);
+}
+.btn.primary:hover { background: color-mix(in srgb, var(--primary) 88%, var(--primary-fg)); }
+.btn.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.btn.quiet:hover { color: var(--fg); background: var(--hover, #f5f5f5); }
+
+.link-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--link);
+  cursor: pointer;
+  font: inherit;
+}
+.link-btn:hover { text-decoration: underline; }
+

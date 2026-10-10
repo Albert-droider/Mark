@@ -1,0 +1,23 @@
+.file-meta[data-document-state="error"] { color: var(--danger, #b83232); }
+.file-meta[data-document-state="pending"] { color: var(--accent); }
+.document-history {
+  position: fixed; z-index: 90; inset: 10vh max(16px, calc((100vw - 760px) / 2));
+  padding: 20px; display: flex; flex-direction: column; gap: 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel-bg, var(--bg)); color: var(--fg);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 35%); font-family: var(--ui-font);
+  max-width: calc(100vw - 32px); overflow: auto;
+}
+.document-history h2, .document-history p { margin: 0; }
+.document-history p { color: var(--muted); font-size: var(--ui-size); }
+.version-list { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; }
+.version-preview { width: 100%; min-height: 80px; flex: 1; resize: none; padding: 10px; box-sizing: border-box; font: 13px/1.5 var(--code-font); background: var(--bg); color: var(--fg); border: 1px solid var(--border); }
+.version-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.markdown-body td[contenteditable], .markdown-body th[contenteditable] { outline: 2px solid var(--accent); outline-offset: -2px; cursor: text; }
+.source-editor { display: flex; flex-direction: column; gap: 12px; }
+.source-editor-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font: var(--ui-size)/1.4 var(--ui-font); color: var(--muted); }
+.source-input { width: 100%; min-height: 65vh; padding: 12px; box-sizing: border-box; resize: vertical; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: 14px/1.6 var(--code-font); }
+.layout-book .source-editor { column-span: all; height: 100%; min-height: 0; }
+.layout-book .source-input { min-height: 0; flex: 1; resize: none; }
+.sheet:has(.source-editor)::before, .sheet:has(.source-editor)::after { display: none; }
+@media print { .document-history, .source-editor { display: none !important; } }

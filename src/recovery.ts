@@ -7,6 +7,8 @@ export interface RecoveryState {
   unresolved: UnresolvedHighlight[];
   drafts: NoteDraft[];
   issues: string[];
+  fileNotes?: { id: string; quote: string; text: string; attached: boolean }[];
+  fileEditable?: boolean;
 }
 interface Actions {
   resume: (draft: NoteDraft) => void;
@@ -14,6 +16,8 @@ interface Actions {
   edit: (group: string) => void;
   relink: (group: string) => void;
   export: () => void;
+  fileEdit?: (id: string) => void;
+  fileCreate?: () => void;
 }
 
 /** A separate, optional surface. Never inserts recovery text into a book page. */
@@ -30,7 +34,7 @@ export class AnnotationRecovery {
     close.setAttribute("aria-label", "Close recovery");
     const backup = this.button("Export reader backup", actions.export);
     const help = el("p", { class: "recovery-help" }, [
-      "Backup contains MARK data and raw storage values, not your source books. Keep source files separately. Backup import is not available yet.",
+      "Reader backup contains local MARK annotations and drafts, not source files or document versions. File-owned notes travel with the Markdown export. Keep source files separately. Backup import is not available yet.",
     ]);
     this.root = el("aside", { id: "annotation-recovery", class: "annotation-recovery",
       "aria-labelledby": "recovery-heading" }, [
@@ -61,7 +65,7 @@ export class AnnotationRecovery {
   dispose(): void { this.root.remove(); this.toggle.remove(); }
 
   refresh(state: RecoveryState): void {
-    const count = state.unresolved.length + state.drafts.length;
+    const count = state.unresolved.length + state.drafts.length + (state.fileNotes?.length ?? 0);
     this.toggle.textContent = `Notes & backup${count ? ` (${count})` : ""}${state.issues.length ? " !" : ""}`;
     this.toggle.classList.toggle("has-storage-issue", state.issues.length > 0);
     this.toggle.setAttribute("aria-label", `Notes and backup: ${count} items${state.issues.length ? ", storage needs attention" : ""}`);
@@ -71,6 +75,15 @@ export class AnnotationRecovery {
         el("strong", {}, ["Some changes are not saved."]),
         ...state.issues.map((message) => el("p", {}, [message])),
         el("p", {}, ["Keep this window open. Export a backup before retrying or closing MARK."]),
+      ]));
+    }
+    if (state.fileEditable && this.actions.fileCreate) this.items.append(this.button("Add document note", this.actions.fileCreate));
+    if (state.fileNotes?.length) this.items.append(el("h3", {}, ["Notes in this file"]));
+    for (const note of state.fileNotes ?? []) {
+      this.items.append(el("section", { class: "recovery-item", "data-file-note": note.id }, [
+        el("small", {}, [note.attached ? "Underlined passage" : note.quote ? "Passage unavailable or overlapping" : "Document note"]),
+        el("blockquote", {}, [note.quote]), el("p", { class: "recovery-note" }, [note.text || "(empty note)"]),
+        this.button("Edit file note", () => this.actions.fileEdit?.(note.id)),
       ]));
     }
     if (!count) this.items.append(el("p", {}, ["No drafts or unattached notes."]));

@@ -1,0 +1,37 @@
+{
+  "type": "performance_evidence",
+  "context": "e01s03 actual Chrome IndexedDB and full reader history dialog; 256 generated edits, no retention-policy change",
+  "measuredAt": "2026-10-09T17:15:00.893Z",
+  "node": "v24.14.0",
+  "samples": 25,
+  "historyBudgetMs": 1000,
+  "budgetSource": "specs/verifications/e01s03-reader-latency.json",
+  "versions": 257,
+  "sourceBytes": 1088009,
+  "storedSnapshotBytes": 836211,
+  "oldestExact": true,
+  "latestExact": true,
+  "save": {
+    "p50Ms": 11.5,
+    "p95Ms": 17.400000005960464,
+    "maxMs": 39.70000001788139
+  },
+  "metadataList": {
+    "p50Ms": 2.9000000059604645,
+    "p95Ms": 3.4000000059604645,
+    "maxMs": 3.7999999821186066
+  },
+  "readerHistoryDialog": {
+    "p50Ms": 15.299999982118607,
+    "p95Ms": 21.900000005960464,
+    "maxMs": 26.19999998807907
+  },
+  "limits": [
+    "Owned synthetic roughly 1-MiB book, not private real-book fixtures.",
+    "257 same-day versions do not model thirty days or five-second continuous edits.",
+    "Measured dialog DOM readiness excludes raster and physical display latency.",
+    "Compressed snapshot bytes exclude working source, metadata and database overhead; this is not a total storage budget.",
+    "Chrome/Vite evidence does not prove packaged native startup or native history latency."
+  ],
+  "passed": true
+}

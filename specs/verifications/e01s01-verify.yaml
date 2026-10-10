@@ -1,0 +1,98 @@
+type: verification
+context: e01s01 living Markdown demo following 90f89e7
+story_id: e01s01
+verified_at: '2026-10-08T15:31:06+02:00'
+verifier: parent
+status: superseded
+superseded_by: e01s02
+current_report: specs/verifications/e01s02-in-place-reader.md
+report: specs/verifications/e01s01-live-demo.md
+phases:
+  smoke:
+    passed: true
+    method: Fresh Vite processes and isolated Chrome profiles
+  build:
+    passed: true
+    command: npm run build -- --logLevel warn
+    warnings:
+      - Some chunks are larger than 500 kB after minification
+      - Tauri core has mixed static and dynamic imports
+  typecheck:
+    passed: true
+    command: tsc --noEmit
+    invoked_by: npm run build
+  lint:
+    passed: null
+    reason: No repository lint command exists
+  tests:
+    passed: true
+    frontend_passed: 196
+    frontend_skipped: 1
+    reason_for_skip: Private MARK_DOC_ALIGN and MARK_TIMING_ALIGN fixtures are absent
+    rust_passed: 12
+  terminal_verdict:
+    command: npm test && npm run build -- --logLevel warn
+    exit_code: 0
+    captured_at: '2026-10-08T15:27:06+02:00'
+    note: One contiguous command run; stdout excerpt is from that run only
+    stdout_excerpt: |
+      > mark@0.4.0 test
+      > vitest run
+
+       RUN  v4.1.11 C:/Finish/MARK
+
+       Test Files  20 passed | 1 skipped (21)
+            Tests  196 passed | 1 skipped (197)
+         Start at  15:27:06
+         Duration  2.19s (transform 2.10s, setup 0ms, import 4.59s, tests 944ms, environment 28.17s)
+
+      > mark@0.4.0 build
+      > tsc --noEmit && vite build --logLevel warn
+  documentation:
+    passed: true
+    command: ste_lint.py for each changed Markdown document
+    errors: 0
+    warnings: 6
+    scope:
+      - README.md
+      - SAMPLE.md
+      - specs/IMPACT_LATEST.md
+      - specs/epics/e01-live-demo/e01s01-live-demo.md
+      - specs/verifications/e01s01-live-demo.md
+      - specs/security/REVIEW.md
+    yaml_validation: Python yaml.safe_load passed for state, tasks and structured verification
+  browser:
+    live:
+      command: node scripts/live-demo-smoke.mjs
+      exit_code: 0
+      checks_passed: 41
+      unhandled_exceptions: 0
+      output: '41 live browser checks. Evidence: C:\Users\vandi\AppData\Local\Temp\mark-reader-smoke-L1XKvl'
+      evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-L1XKvl/results.json
+    reader:
+      command: node scripts/reader-smoke.mjs
+      exit_code: 0
+      checks_passed: 30
+      evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-ToupbS/results.json
+  manual:
+    passed: false
+    reason: Native save-dialog, restart and actual-audio acceptance await owner confirmation
+    steps:
+      - Open SAMPLE.md through File and choose Open live copy
+      - Toggle a task and apply a table edit
+      - Apply an artifact edit
+      - Export to a separate new file using the native save dialog
+      - Reopen MARK and resume SAMPLE-edited.md through Notes
+      - Check the writer with actual audio playback
+  gaps:
+    automated_closed: true
+    human_acceptance_pending: true
+    failures:
+      - issue: Storage warning intercepted Save draft
+        regression: Storage warnings do not intercept Save draft or Export clicks
+        red_evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-Blz36F/results.json
+        green_evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-IISAsb/results.json
+      - issue: Storage warning visually overlapped the compact footer
+        regression: Visible warnings stay above the compact Save and Export footer
+        red_evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-a4yOqI/results.json
+        green_evidence: C:/Users/vandi/AppData/Local/Temp/mark-reader-smoke-IISAsb/results.json

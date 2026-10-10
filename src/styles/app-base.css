@@ -1,0 +1,55 @@
+/* =========================================================================
+   Mark — application chrome, layout, settings panel, overlays.
+   ========================================================================= */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* Component display rules must never expose an unavailable action. */
+[hidden] { display: none !important; }
+
+:root {
+  --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --radius: 8px;
+  --control-height: 32px;
+  --ui-size: 13px;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--ui-font);
+  font-size: 14px;
+  background: var(--bg, #fff);
+  color: var(--fg, #0a0a0a);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+::selection { background: var(--select, rgba(9,105,218,0.15)); }
+
+/* Scrollbars ------------------------------------------------------------- */
+#app * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#app ::-webkit-scrollbar { width: 12px; height: 12px; }
+#app ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+#app ::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+

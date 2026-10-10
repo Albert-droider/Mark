@@ -141,6 +141,16 @@ describe("MarkdownRenderer", () => {
     expect(ids).toEqual(["h-code", "h-code-2", "h-cafe-een"]);
   });
 
+  it("removes authored stylesheets that could impersonate the app chrome", () => {
+    const html = new MarkdownRenderer().render('<div><style>.file-meta { display: none }</style>Book</div>');
+    expect(html).not.toContain("<style"); expect(html).not.toContain("display: none"); expect(html).toContain("Book");
+  });
+
+  it("removes authored form submission while keeping ordinary document content", () => {
+    const html = new MarkdownRenderer().render('<form action="https://example.invalid/collect" method="post"><p>Book</p></form>');
+    expect(html).not.toContain("<form"); expect(html).not.toContain("/collect"); expect(html).toContain("Book");
+  });
+
   it("neutralises fixed-position overlays", () => {
     const html = new MarkdownRenderer().render('<div style="position:fixed;z-index:9">x</div>\n');
     expect(html).not.toMatch(/position:\s*fixed/i);

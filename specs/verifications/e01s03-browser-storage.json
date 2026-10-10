@@ -1,0 +1,74 @@
+{
+  "type": "storage_verification",
+  "context": "e01s04 actual Chrome IndexedDB; approved budget and unchanged retention",
+  "measuredAt": "2026-10-09T17:14:51.475Z",
+  "node": "v24.14.0",
+  "checks": [
+    "new version is compressed",
+    "compression reduces the stored source bytes",
+    "read restores exact Markdown and Unicode",
+    "original version is still available",
+    "metadata schema is active",
+    "a stale writer cannot overwrite the acknowledged source",
+    "failed version writes roll back the source and metadata",
+    "save and list never scan full snapshot bodies",
+    "missing metadata blocks both listing and saving without acknowledgement",
+    "corrupt metadata blocks both listing and saving",
+    "invalid UTF-8 snapshot data fails rather than returning replacement characters",
+    "an unsupported working record is not silently replaced",
+    "rejected corrupt-storage writes preserve source and version count",
+    "over-budget saves preserve the acknowledged source and all existing history",
+    "a corrupt legacy migration aborts the schema upgrade without rewriting its snapshot",
+    "schema upgrade reads legacy sources without rewriting their snapshots"
+  ],
+  "result": {
+    "codec": "gzip",
+    "bytes": 340012,
+    "storedBytes": 901,
+    "databaseVersion": 2,
+    "exact": true,
+    "versions": 2,
+    "originalExact": true
+  },
+  "safety": {
+    "conflict": "This document changed in another MARK tab. Export before reloading.",
+    "quota": "QuotaExceededError",
+    "source": "First writer",
+    "versions": 2
+  },
+  "corruption": {
+    "missingList": "Version metadata is incomplete; changes were not applied.",
+    "missingSave": "Version metadata is incomplete; changes were not applied.",
+    "corruptList": "Version metadata is corrupt; changes were not applied.",
+    "corruptSave": "Version metadata is corrupt; changes were not applied.",
+    "corruptPayload": "Failed to execute 'decode' on 'TextDecoder': The encoded data was not valid.",
+    "corruptDocument": "Unsupported document storage. Existing data was not replaced.",
+    "documentUnchanged": true,
+    "source": "Keep this source",
+    "originalVersion": "Keep this source",
+    "versions": 1
+  },
+  "budget": {
+    "checks": [
+      "over-budget saves preserve the acknowledged source and all existing history"
+    ],
+    "result": {
+      "failure": "Document storage budget exceeded. Increase the limit in Settings or export Markdown. Existing source and history were not changed.",
+      "source": "Original source",
+      "unchangedHistory": true,
+      "originalVersion": "Original source"
+    }
+  },
+  "migration": {
+    "source": "Legacy UTF-8 学习\r\n",
+    "recovered": "Legacy UTF-8 学习\r\n",
+    "unchanged": true,
+    "current": "Legacy UTF-8 学习\r\nnew",
+    "rejectedMigration": "Unsupported version storage. Migration was cancelled; existing data was not replaced.",
+    "afterAbort": {
+      "databaseVersion": 1,
+      "corruptBytes": -1,
+      "source": "Legacy UTF-8 学习\r\n"
+    }
+  }
+}

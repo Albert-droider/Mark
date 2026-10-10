@@ -6,3 +6,10 @@ bugs:
     scope: reader-ui
     summary: CSS exposes Attach without a relinking target.
     file: specs/bugs/BUG-001-attach.md
+  - bug_id: BUG-002
+    status: fixed
+    severity: medium
+    priority: P1
+    scope: native-lifecycle
+    summary: Native close flushes source but lacks guarded window destroy permission.
+    file: specs/bugs/BUG-002-native-close.md

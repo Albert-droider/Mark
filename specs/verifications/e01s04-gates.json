@@ -1,0 +1,271 @@
+{
+  "type": "verification",
+  "context": "e01s04 functional gates; independent audit and native manual acceptance remain separate",
+  "measuredAt": "2026-10-09T15:07:35.462Z",
+  "results": [
+    {
+      "command": "npm run test:coverage",
+      "exit": 0,
+      "elapsedMs": 5448,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-gates-jB5o6h\\1.log",
+      "brief": [
+        " Test Files  39 passed | 1 skipped (40)",
+        "      Tests  307 passed | 1 skipped (308)",
+        "   Duration  4.33s (transform 5.95s, setup 0ms, import 14.49s, tests 3.07s, environment 72.10s)",
+        " % Coverage report from v8",
+        "File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s ",
+        "Statements   : 69.1% ( 3715/5376 )",
+        "Branches     : 62.11% ( 1843/2967 )",
+        "Functions    : 64.52% ( 802/1243 )",
+        "Lines        : 72.99% ( 2863/3922 )"
+      ]
+    },
+    {
+      "command": "npm run build",
+      "exit": 0,
+      "elapsedMs": 17131,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-gates-jB5o6h\\2.log",
+      "brief": [
+        "dist/assets/gitGraphDiagram-XJZIOB7I-CMQT_gED.js         29.42 kB │ gzip:   8.70 kB",
+        "dist/assets/erDiagram-O2IAPWRE-BePE6OqJ.js               30.71 kB │ gzip:  10.57 kB",
+        "dist/assets/timeline-definition-YOQAKGHF-Br_A-8VZ.js     30.89 kB │ gzip:  10.19 kB",
+        "dist/assets/requirementDiagram-X7JNWC4A-DZOUZPMa.js      31.04 kB │ gzip:   9.77 kB",
+        "dist/assets/quadrantDiagram-GDMTTRAM-B5m8fviw.js         34.01 kB │ gzip:   9.97 kB",
+        "dist/assets/stateDiagram-v2-TBUQTH76-C3qrS9ES.js         41.75 kB │ gzip:  13.98 kB",
+        "dist/assets/vennDiagram-BLWOH2XV-D-_AihLM.js             41.99 kB │ gzip:  15.70 kB",
+        "dist/assets/blockDiagram-E7TT5TSB-B0qXqPAK.js            42.76 kB │ gzip:  14.07 kB",
+        "dist/assets/xychartDiagram-TAQBALBS-DLabUupQ.js          44.86 kB │ gzip:  12.62 kB",
+        "dist/assets/dagre-W4DXFKR2-Bch3NFBA.js                   46.15 kB │ gzip:  16.47 kB",
+        "dist/assets/classDiagram-v2-K4WV4PDN-q4yRmiHg.js         49.87 kB │ gzip:  16.03 kB",
+        "dist/assets/flowDiagram-OXPTDLAJ-BvqiEey4.js             63.47 kB │ gzip:  20.43 kB",
+        "dist/assets/c4Diagram-CRA5TL53-CObEint_.js               65.81 kB │ gzip:  18.88 kB",
+        "dist/assets/ganttDiagram-R7TSEDQI-DUxpNn7i.js            70.40 kB │ gzip:  23.84 kB",
+        "dist/assets/diagram-2UJZ2QOL-CwHbZ4wo.js                 81.12 kB │ gzip:  25.16 kB",
+        "dist/assets/cose-bilkent-JH36ORCC-CCAWTEqm.js            81.70 kB │ gzip:  22.47 kB",
+        "dist/assets/swimlanes-N4OXWK64-CViSXc5x.js              110.83 kB │ gzip:  40.51 kB",
+        "dist/assets/sequenceDiagram-ZO4K6R2Y-BGPK2ktO.js        118.92 kB │ gzip:  31.97 kB",
+        "dist/assets/architectureDiagram-47P4ROYG-CIuoOTXc.js    151.83 kB │ gzip:  43.12 kB",
+        "dist/assets/usecaseDiagram-VIAY4XPW-BGwlFlTQ.js         189.91 kB │ gzip:  50.68 kB",
+        "dist/assets/cytoscape.esm-CtNdOvlO.js                   443.80 kB │ gzip: 142.41 kB",
+        "dist/assets/mermaid.core-BtWnsPYu.js                    641.92 kB │ gzip: 153.52 kB",
+        "dist/assets/cynefin-EF2NZ3EQ-CVilPkFM.js                654.03 kB │ gzip: 136.56 kB",
+        "dist/assets/elk-IJKZMXRS-cxk8HUU2.js                  1,476.86 kB │ gzip: 453.51 kB",
+        "dist/assets/index-DKBUR2Cp.js                         1,877.64 kB │ gzip: 604.94 kB",
+        "✓ built in 15.05s",
+        "(!) Some chunks are larger than 500 kB after minification. Consider:",
+        "- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit."
+      ]
+    },
+    {
+      "command": "cargo fmt --all --manifest-path src-tauri/Cargo.toml -- --check",
+      "exit": 0,
+      "elapsedMs": 247,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-gates-jB5o6h\\3.log",
+      "brief": []
+    },
+    {
+      "command": "cargo test --locked --offline --manifest-path src-tauri/Cargo.toml",
+      "exit": 0,
+      "elapsedMs": 3280,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-gates-jB5o6h\\4.log",
+      "brief": [
+        "test versions::tests::exclusive_write_failure_never_deletes_an_existing_file ... ok",
+        "test versions::tests::fails_closed_on_corrupt_identity_or_invalid_source_encoding ... ok",
+        "test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "     Running unittests src\\lib.rs (src-tauri\\target\\debug\\deps\\mark_lib-502f12937fb446de.exe)",
+        "     Running unittests src\\main.rs (src-tauri\\target\\debug\\deps\\mark-2baedfdb95bef1e9.exe)",
+        "   Doc-tests mark_lib"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0,
+      "elapsedMs": 75,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-gates-jB5o6h\\5.log",
+      "brief": [
+        "warning: in the working copy of 'scripts/reader-smoke.mjs', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'specs/IMPACT_LATEST.md', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'specs/bugs/registry.yaml', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'specs/state.yaml', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src-tauri/Cargo.lock', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src-tauri/Cargo.toml', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src-tauri/capabilities/default.json', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src-tauri/src/lib.rs', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/__tests__/note-editor.test.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/__tests__/renderer.test.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/__tests__/share.test.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/anchors.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/app.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/book.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/icons.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/main.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/note-editor.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/recovery.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/renderer/base.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/renderer/markdown.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/session.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/share-actions.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/share.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/styles/app.css', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/styles/markdown.css', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/styles/notes.css', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'src/viewer.ts', LF will be replaced by CRLF the next time Git touches it",
+        "warning: in the working copy of 'vitest.config.ts', LF will be replaced by CRLF the next time Git touches it"
+      ]
+    }
+  ],
+  "coverage": {
+    "total": {
+      "lines": {
+        "total": 3922,
+        "covered": 2863,
+        "skipped": 0,
+        "pct": 72.99
+      },
+      "statements": {
+        "total": 5376,
+        "covered": 3715,
+        "skipped": 0,
+        "pct": 69.1
+      },
+      "functions": {
+        "total": 1243,
+        "covered": 802,
+        "skipped": 0,
+        "pct": 64.52
+      },
+      "branches": {
+        "total": 2967,
+        "covered": 1843,
+        "skipped": 0,
+        "pct": 62.11
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "modules": [
+      {
+        "file": "C:\\Finish\\MARK\\src\\app.ts",
+        "data": {
+          "lines": {
+            "total": 81,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "functions": {
+            "total": 82,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "statements": {
+            "total": 139,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "branches": {
+            "total": 47,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          }
+        }
+      },
+      {
+        "file": "C:\\Finish\\MARK\\src\\document-store.ts",
+        "data": {
+          "lines": {
+            "total": 5,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "functions": {
+            "total": 5,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "statements": {
+            "total": 5,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          },
+          "branches": {
+            "total": 2,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 0
+          }
+        }
+      },
+      {
+        "file": "C:\\Finish\\MARK\\src\\reader-navigation.ts",
+        "data": {
+          "lines": {
+            "total": 147,
+            "covered": 147,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 42,
+            "covered": 42,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 204,
+            "covered": 203,
+            "skipped": 0,
+            "pct": 99.5
+          },
+          "branches": {
+            "total": 106,
+            "covered": 101,
+            "skipped": 0,
+            "pct": 95.28
+          }
+        }
+      },
+      {
+        "file": "C:\\Finish\\MARK\\src\\reader-shortcuts.ts",
+        "data": {
+          "lines": {
+            "total": 35,
+            "covered": 35,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 9,
+            "covered": 9,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 53,
+            "covered": 51,
+            "skipped": 0,
+            "pct": 96.22
+          },
+          "branches": {
+            "total": 44,
+            "covered": 42,
+            "skipped": 0,
+            "pct": 95.45
+          }
+        }
+      }
+    ]
+  }
+}

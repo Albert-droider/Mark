@@ -5,6 +5,7 @@ import { el } from "./util";
 import { icon } from "./icons";
 import { isTauri } from "./platform";
 import { shortcutRows } from "./commands";
+import { MIN_DOCUMENT_BUDGET_MIB, MAX_DOCUMENT_BUDGET_MIB } from "./document-budget";
 
 /** Right-side sheet for reading measure, appearance, and shortcuts. */
 export class SettingsPanel {
@@ -89,6 +90,12 @@ export class SettingsPanel {
         this.toggleField("render.taskLists", "Task list checkboxes", s.render.taskLists),
         el("p", { class: "hint" }, ["Links to the web open in your browser, so Mark stays on the document."]),
       ]),
+      this.section("Storage", [
+        this.sliderField("documentBudgetMiB", "Document storage budget", MIN_DOCUMENT_BUDGET_MIB, MAX_DOCUMENT_BUDGET_MIB, 64, s.documentBudgetMiB, " MiB"),
+        el("p", { class: "hint" }, ["Each document starts with 1 GiB. A warning appears at 80%. At the limit, saves stop without removing protected history. Export keeps pending edits."]),
+        el("p", { class: "hint" }, ["The budget counts managed source and history data. Database, filesystem, and temporary-file overhead are not included."]),
+        ...(isTauri ? [el("p", { class: "hint" }, ["Use MARK as the only app saving this Markdown file. Conflict checks are best effort, not a lock against other editors."])] : []),
+      ]),
       this.section("Shortcuts", [this.shortcutList()]),
       el("div", { class: "panel-footer" }, [
         el("button", { class: "btn reset-btn", type: "button" }, ["Reset appearance"]),
@@ -127,7 +134,7 @@ export class SettingsPanel {
 
   private sliderField(key: string, label: string, min: number, max: number, step: number, value: number, unit: string): HTMLElement {
     const val = el("span", { class: "slider-val" }, [this.fmt(value, unit)]);
-    const input = el("input", { type: "range", class: "slider", min: String(min), max: String(max), step: String(step) }) as HTMLInputElement;
+    const input = el("input", { type: "range", class: "slider", "aria-label": label, min: String(min), max: String(max), step: String(step) }) as HTMLInputElement;
     input.value = String(value);
     input.addEventListener("input", () => {
       val.textContent = this.fmt(parseFloat(input.value), unit);
@@ -183,6 +190,7 @@ export class SettingsPanel {
     setVal("lineHeight", String(s.lineHeight));
     setVal("contentWidth", String(s.contentWidth));
     setVal("padding", String(s.padding));
+    setVal("documentBudgetMiB", String(s.documentBudgetMiB));
     setVal("render.linkify", s.render.linkify);
     setVal("render.typographer", s.render.typographer);
     setVal("render.emoji", s.render.emoji);
@@ -230,6 +238,7 @@ function flatPatch(key: string, value: string | number | boolean): Partial<Setti
     case "lineHeight": return { lineHeight: Number(value) };
     case "contentWidth": return { contentWidth: Number(value) };
     case "padding": return { padding: Number(value) };
+    case "documentBudgetMiB": return { documentBudgetMiB: Number(value) };
     default: return null;
   }
 }

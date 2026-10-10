@@ -13,22 +13,15 @@ import katex from "katex";
 import hljs from "highlight.js";
 import DOMPurify from "dompurify";
 
-import type { DocRenderer } from "./base";
-import type { FileKind } from "../types";
-import type { Settings } from "../types";
+import type { DocRenderer, RenderedSource, SourceTask } from "./base";
+import type Token from "markdown-it/lib/token.mjs";
+import { sourceBlock, installTaskProvenance } from "./source-provenance";
+import type { FileKind, Settings } from "../types";
 import { artifactHtml } from "../artifacts";
 import { escapeHtml, inlineText, slugify } from "../util";
 import { getSettings } from "../store";
-import { sliceSourceLines, type SourceBlock } from "../share";
-interface SourceRender { source: string; offset: number; blocks: SourceBlock[] }
-function sourceBlock(env: SourceRender, map: [number, number] | null, kind: SourceBlock["kind"]): string {
-  if (!map) return "";
-  const block: SourceBlock = { id: `block-${crypto.randomUUID()}`, kind, startLine: env.offset + map[0] + 1, endLine: env.offset + map[1], markdown: "" };
-  block.markdown = sliceSourceLines(env.source, block.startLine, block.endLine);
-  env.blocks.push(block);
-  return ` data-mark-block="${block.id}"`;
-}
-
+import type { SourceBlock } from "../share";
+import { fileNoteRender, installFileNotes } from "../file-note-renderer";
 const CALLOUTS = ["tip", "info", "note", "warning", "danger", "success"];
 const MATH_DELIMITERS = ["dollars", "brackets"];
 
@@ -69,6 +62,7 @@ export function stripFrontmatter(source: string): string {
 }
 
 const PURIFY_CONFIG = {
+  FORBID_TAGS: ["style", "form"],
   ADD_ATTR: [
     "target", "rel", "open", "align", "colspan", "rowspan", "start",
     "reversed", "value", "lang", "dir", "id", "name",
@@ -106,7 +100,10 @@ export class MarkdownRenderer implements DocRenderer {
     });
 
     if (s.emoji) md.use(emoji);
-    if (s.taskLists) md.use(taskLists, { enabled: false, label: true });
+    if (s.taskLists) {
+      md.use(taskLists, { enabled: false, label: true });
+      installTaskProvenance(md);
+    }
     md.use(footnote);
     md.use(sub);
     md.use(sup);
@@ -120,7 +117,8 @@ export class MarkdownRenderer implements DocRenderer {
 
     if (s.math) {
       md.use(texmath, {
-        engine: katex,
+        engine: { renderToString: (...args: Parameters<typeof katex.renderToString>) => katex.renderToString(...args)
+          .replace('<span class="katex">', `<span class="katex" data-mark-tex="${escapeHtml(args[0])}">`) },
         delimiters: MATH_DELIMITERS,
         katexOptions: { throwOnError: false, output: "html", strict: false },
       });
@@ -128,6 +126,7 @@ export class MarkdownRenderer implements DocRenderer {
 
     this.installRules(md, settings);
     installAlerts(md);
+    installFileNotes(md);
     return md;
   }
 
@@ -196,13 +195,20 @@ export class MarkdownRenderer implements DocRenderer {
 
   render(source: string): string { return this.renderWithSource(source).html; }
 
-  renderWithSource(source: string): { html: string; blocks: SourceBlock[] } {
+  renderInline(source: string): string {
+    ensurePurifyHook();
+    return DOMPurify.sanitize(this.md.renderInline(source), PURIFY_CONFIG) as string;
+  }
+
+  renderWithSource(source: string): RenderedSource {
     ensurePurifyHook();
     const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
     const close = lines[0]?.trim() === "---" ? lines.findIndex((line, i) => i > 0 && line.trim() === "---") : -1;
-    const env = { source, offset: close < 0 ? 0 : close + 1, blocks: [] as SourceBlock[], slugCount: Object.create(null) };
+    const offset = close < 0 ? 0 : close + 1;
+    const env = { source, offset, blocks: [] as SourceBlock[], tasks: [] as SourceTask[], slugCount: Object.create(null), fileNotes: fileNoteRender(source, offset) };
     const html = this.md.render(stripFrontmatter(source), env);
-    return { html: DOMPurify.sanitize(html, PURIFY_CONFIG) as string, blocks: env.blocks };
+    return { html: DOMPurify.sanitize(html, PURIFY_CONFIG) as string, blocks: env.blocks, tasks: env.tasks,
+      notes: env.fileNotes.notes, passages: env.fileNotes.passages };
   }
 }
 
@@ -245,7 +251,7 @@ function installAlerts(md: MarkdownIt): void {
 }
 
 function calloutRenderer(name: string) {
-  return function (tokens: any[], idx: number) {
+  return function (tokens: Token[], idx: number) {
     if (tokens[idx].nesting === 1) {
       const title = (tokens[idx].info || "").trim().slice(name.length).trim();
       const tag = title ? escapeHtml(title) : name.charAt(0).toUpperCase() + name.slice(1);
@@ -255,7 +261,7 @@ function calloutRenderer(name: string) {
   };
 }
 
-function detailsRenderer(tokens: any[], idx: number) {
+function detailsRenderer(tokens: Token[], idx: number) {
   if (tokens[idx].nesting === 1) {
     const info = (tokens[idx].info || "").trim();
     const summary = info.replace(/^details\b\s*/i, "").trim() || "Details";

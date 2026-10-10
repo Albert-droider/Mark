@@ -172,18 +172,28 @@ describe("viewer highlighting", () => {
     expect(getHighlights(canonicalPath("C:/docs/other.md"))).toHaveLength(0);
   });
 
-  it("edits a durable Markdown copy without changing the reader source", () => {
+  it("keeps unbound readers read-only rather than allowing unversioned edits", () => {
+    const { viewer } = open();
+    const source = "# Study\n\n- [ ] Read\n";
+    viewer.render({ ...viewer.file!, source });
+    const checkbox = viewer.root.querySelector<HTMLInputElement>("input")!;
+    expect(checkbox.disabled).toBe(true); checkbox.click();
+    expect(viewer.file!.source).toBe(source);
+    expect(new DraftStore().list().filter(d => d.purpose === "document")).toHaveLength(0);
+  });
+
+  it("creates a durable independent Markdown note without copying or changing the reader source", () => {
     const { viewer } = open();
     const original = viewer.file!.source;
-    viewer.createDocument(true);
+    viewer.createDocument();
     const input = document.querySelector(".note-input") as HTMLTextAreaElement;
-    expect(input.value).toBe(original);
+    expect(input.value).toBe("# Untitled note\n\n");
     input.value += "\n## My code notes\n\nA new explanation.";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     (document.querySelector(".note-editor .sel-save") as HTMLElement).click();
     const documents = new DraftStore().list().filter(d => d.purpose === "document");
     expect(documents).toHaveLength(1);
-    expect(documents[0]).toMatchObject({ name: "h05-edited.md", text: input.value, group: null, anchors: [] });
+    expect(documents[0]).toMatchObject({ name: "Untitled.md", text: input.value, group: null, anchors: [] });
     expect(viewer.file!.source).toBe(original);
     expect(viewer.root.textContent).not.toContain("My code notes");
     expect(getHighlights(canonicalPath(KEY))).toHaveLength(0);
@@ -193,7 +203,7 @@ describe("viewer highlighting", () => {
     let complete!: (value: "saved") => void;
     const save = vi.spyOn(textExport, "exportText").mockImplementation(() => new Promise(resolve => { complete = resolve; }));
     const { viewer } = open();
-    viewer.createDocument(true);
+    viewer.createDocument();
     (document.querySelector(".note-export") as HTMLButtonElement).click();
     expect(save).toHaveBeenCalledTimes(1);
     viewer.createDocument();

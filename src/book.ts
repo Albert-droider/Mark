@@ -169,7 +169,7 @@ export class Book {
     if ((window.getSelection()?.toString() || "").trim()) return;
     const target = e.target;
     if (!(target instanceof Element)) return;
-    if (target.closest("a, button, summary, input, textarea, select, label, mark.hl")) return;
+    if (target.closest("a, button, summary, input, textarea, select, label, mark.hl, td, th, [contenteditable]")) return;
     const rect = this.sheet.getBoundingClientRect();
     const x = e.clientX - rect.left;
     if (x < rect.width * 0.16) this.prev();
@@ -178,7 +178,7 @@ export class Book {
 
   private onWheel = (e: WheelEvent): void => {
     if (!this.enabled || e.ctrlKey || e.metaKey) return;
-    const host = e.target instanceof Element ? e.target.closest(".code-pre, .artifact-slot") : null;
+    const host = e.target instanceof Element ? e.target.closest(".code-pre, .artifact-slot, .source-input") : null;
     if (host instanceof HTMLElement && host.scrollHeight > host.clientHeight + 4) {
       const down = e.deltaY > 0;
       const atEnd = host.scrollTop + host.clientHeight >= host.scrollHeight - 2;

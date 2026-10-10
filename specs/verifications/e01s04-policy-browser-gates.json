@@ -1,0 +1,280 @@
+{
+  "type": "browser_evidence",
+  "context": "e01s04 approved budget; all seven real Chromium scripts after final message regression",
+  "generatedAt": "2026-10-09T17:16:09.414Z",
+  "runtime": {
+    "node": "v24.14.0"
+  },
+  "passed": true,
+  "results": [
+    {
+      "script": "document-budget-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-document-budget-smoke.mjs.log",
+      "report": {
+        "type": "browser_evidence",
+        "context": "e01s04 owner-approved budget: warning, refusal, pending export and retry in the actual reader",
+        "generatedAt": "2026-10-09T17:14:48.433Z",
+        "runtime": {
+          "node": "v24.14.0"
+        },
+        "passed": true,
+        "checks": [
+          "the actual reader uses the configured byte limit",
+          "a visible warning precedes the limit while both protected versions remain intact",
+          "an over-budget autosave retains the pending reader edit, acknowledged source, original and latest snapshots",
+          "an actual new-file Markdown export preserves every byte of the unsaved source after refusal",
+          "raising the limit lets the five-second retry acknowledge the exact source without deleting history"
+        ],
+        "warning": {
+          "storage": {
+            "usedBytes": 54687018,
+            "limitBytes": 67108864,
+            "warning": true
+          },
+          "versions": 3,
+          "label": "10 words · 1 min · Saved locally · Storage 82%",
+          "message": "Saved with version history. Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+          "notice": "Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+          "visible": true,
+          "originalExact": true
+        },
+        "refusal": {
+          "label": "10 words · 1 min · Not saved · Storage 82%",
+          "message": "Not saved: Error: Document storage budget exceeded. Increase the limit in Settings or export Markdown. Existing source and history were not changed. Keep MARK open or export Markdown before closing. Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+          "pendingChecked": true,
+          "sourceUnchanged": true,
+          "historyUnchanged": true,
+          "originalsExact": true,
+          "latestExact": true
+        },
+        "retry": {
+          "exact": true,
+          "versions": 4,
+          "storage": {
+            "usedBytes": 67323636,
+            "limitBytes": 134217728,
+            "warning": false
+          },
+          "label": "9 words · 1 min · Saved locally"
+        },
+        "limits": [
+          "Owned Chromium profile with a synthetic near-16-MiB document; not packaged native acceptance.",
+          "Counts managed source, snapshot and metadata data, not database/filesystem allocation or temporary export overhead."
+        ]
+      }
+    },
+    {
+      "script": "document-storage-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-document-storage-smoke.mjs.log",
+      "report": {
+        "checks": [
+          "new version is compressed",
+          "compression reduces the stored source bytes",
+          "read restores exact Markdown and Unicode",
+          "original version is still available",
+          "metadata schema is active",
+          "a stale writer cannot overwrite the acknowledged source",
+          "failed version writes roll back the source and metadata",
+          "save and list never scan full snapshot bodies",
+          "missing metadata blocks both listing and saving without acknowledgement",
+          "corrupt metadata blocks both listing and saving",
+          "invalid UTF-8 snapshot data fails rather than returning replacement characters",
+          "an unsupported working record is not silently replaced",
+          "rejected corrupt-storage writes preserve source and version count",
+          "over-budget saves preserve the acknowledged source and all existing history",
+          "a corrupt legacy migration aborts the schema upgrade without rewriting its snapshot",
+          "schema upgrade reads legacy sources without rewriting their snapshots"
+        ],
+        "result": {
+          "codec": "gzip",
+          "bytes": 340012,
+          "storedBytes": 901,
+          "databaseVersion": 2,
+          "exact": true,
+          "versions": 2,
+          "originalExact": true
+        },
+        "artifacts": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-59ViwW"
+      }
+    },
+    {
+      "script": "long-history-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-long-history-smoke.mjs.log",
+      "report": {
+        "type": "performance_evidence",
+        "context": "e01s03 actual Chrome IndexedDB and full reader history dialog; 256 generated edits, no retention-policy change",
+        "measuredAt": "2026-10-09T17:15:00.893Z",
+        "node": "v24.14.0",
+        "samples": 25,
+        "historyBudgetMs": 1000,
+        "budgetSource": "specs/verifications/e01s03-reader-latency.json",
+        "versions": 257,
+        "sourceBytes": 1088009,
+        "storedSnapshotBytes": 836211,
+        "oldestExact": true,
+        "latestExact": true,
+        "save": {
+          "p50Ms": 11.5,
+          "p95Ms": 17.400000005960464,
+          "maxMs": 39.70000001788139
+        },
+        "metadataList": {
+          "p50Ms": 2.9000000059604645,
+          "p95Ms": 3.4000000059604645,
+          "maxMs": 3.7999999821186066
+        },
+        "readerHistoryDialog": {
+          "p50Ms": 15.299999982118607,
+          "p95Ms": 21.900000005960464,
+          "maxMs": 26.19999998807907
+        },
+        "limits": [
+          "Owned synthetic roughly 1-MiB book, not private real-book fixtures.",
+          "257 same-day versions do not model thirty days or five-second continuous edits.",
+          "Measured dialog DOM readiness excludes raster and physical display latency.",
+          "Compressed snapshot bytes exclude working source, metadata and database overhead; this is not a total storage budget.",
+          "Chrome/Vite evidence does not prove packaged native startup or native history latency."
+        ],
+        "passed": true,
+        "artifacts": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-2wLaPW"
+      }
+    },
+    {
+      "script": "live-demo-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-live-demo-smoke.mjs.log",
+      "report": {
+        "dir": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-jDYal6",
+        "passed": 38,
+        "checks": [
+          "Primary reader owns enabled checkpoints without a live-copy route",
+          "Initial working document is acknowledged in real IndexedDB",
+          "Opening captures one initial version",
+          "Reader task click retains keyboard focus and shows pending changes",
+          "No per-keystroke or task-click write is claimed as saved",
+          "Five-second autosave writes the checked Markdown",
+          "Changed source adds a version",
+          "Idle save intervals do not add duplicate snapshots",
+          "Double-click edits the actual cell, without a form or second table",
+          "Typing stays in the same table and Enter finishes editing",
+          "Cell text is persisted as escaped Markdown",
+          "In-place table editing leaves unrelated Markdown unchanged",
+          "Code has one compact clipboard SVG exactly in the former Copy slot",
+          "Table clipboard is below the content",
+          "Real table Markdown download includes the current edit",
+          "Real CSV download includes current cell text",
+          "Agent context binds the edited block to the same current-source hash, excluding the book",
+          "Whole-document export contains current task and cell changes",
+          "A fresh app recovers checked and cell-edited working Markdown from the original upload identity",
+          "History previews the original Markdown without changing the reader",
+          "Cancelled restore keeps the current document",
+          "Confirmed restore becomes a new saved version, not a history deletion",
+          "Restore retains original, checked and cell-edited versions",
+          "The normal reader has no raw-editor or standalone-note creation command",
+          "Failed writes are visible and the changed task remains on screen",
+          "Failed autosave does not acknowledge or replace the persisted document",
+          "Current Markdown can still be exported after a failed save",
+          "A failed save prevents file switching and retains unsaved source",
+          "Next interval retries the same document and acknowledges its exact source",
+          "Book still turns pages with editable checkpoints and table content",
+          "Version history and close/restore controls fit 1200×820",
+          "Reader chrome fits 1200×820 without an editor pane",
+          "Version history and close/restore controls fit 800×600",
+          "Reader chrome fits 800×600 without an editor pane",
+          "Version history and close/restore controls fit 460×340",
+          "Reader chrome fits 460×340 without an editor pane",
+          "Browser smoke never rewrites the public source file",
+          "No unhandled browser exceptions"
+        ]
+      }
+    },
+    {
+      "script": "reader-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-reader-smoke.mjs.log",
+      "report": {
+        "passed": 21,
+        "path": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-UcxlUg\\results.json"
+      }
+    },
+    {
+      "script": "reader-notes-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-reader-notes-smoke.mjs.log",
+      "report": {
+        "passed": 14,
+        "path": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-p1AlnM\\results.json",
+        "snapshot": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-p1AlnM\\subtle-note-hover.png",
+        "compact": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-p1AlnM\\subtle-note-compact.png"
+      }
+    },
+    {
+      "script": "reader-latency-smoke.mjs",
+      "exitCode": 0,
+      "log": "C:/Users/vandi/AppData/Local/Temp/mark-policy-reader-latency-smoke.mjs.log",
+      "report": {
+        "type": "performance_evidence",
+        "context": "e01s03 actual Chrome full reader input, rendering and IndexedDB; generated paragraph books",
+        "measuredAt": "2026-10-09T17:16:09.305Z",
+        "node": "v24.14.0",
+        "coldDevReadyMs": 2780.7023999999997,
+        "budgets": {
+          "handlerP95Ms": 16,
+          "openMs": 5000,
+          "historyMs": 1000
+        },
+        "cases": [
+          {
+            "mebibytes": 1,
+            "sourceBytes": 1048512,
+            "openMs": 336.79609999999957,
+            "handlers": {
+              "p50Ms": 0.30000001192092896,
+              "p95Ms": 1.4000000059604645
+            },
+            "historyMs": 0.7000000178813934,
+            "versions": 2,
+            "exactEdit": true,
+            "passed": true
+          },
+          {
+            "mebibytes": 5,
+            "sourceBytes": 5242816,
+            "openMs": 879.9569999999994,
+            "handlers": {
+              "p50Ms": 1,
+              "p95Ms": 10.200000017881393
+            },
+            "historyMs": 0.5999999940395355,
+            "versions": 2,
+            "exactEdit": true,
+            "passed": true
+          },
+          {
+            "mebibytes": 16,
+            "sourceBytes": 16777152,
+            "openMs": 2835.1715999999997,
+            "handlers": {
+              "p50Ms": 4.200000017881393,
+              "p95Ms": 10.899999976158142
+            },
+            "historyMs": 0.6000000238418579,
+            "versions": 2,
+            "exactEdit": true,
+            "passed": true
+          }
+        ],
+        "limits": [
+          "Development Vite/browser cold readiness is not packaged native startup.",
+          "Handler latency excludes raster and physical display latency.",
+          "History has initial and edited versions, not a thirty-day corpus.",
+          "Generated books are not private real-book fixtures."
+        ],
+        "artifacts": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-KKaRwm"
+      }
+    }
+  ]
+}

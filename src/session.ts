@@ -19,7 +19,7 @@ export class ReadingSession {
     private workspace: HTMLElement,
     private hooks: {
       hasFile: () => boolean;
-      onChanged: () => void;
+      onChanged: () => void | boolean | Promise<boolean>;
       onMissing: (path: string) => void;
     },
   ) {}
@@ -87,8 +87,8 @@ export class ReadingSession {
       const m = await fileMtime(path);
       if (this.key !== key) return;
       if (this.seenMtime !== 0 && m !== this.seenMtime) {
-        this.seenMtime = m;
-        this.hooks.onChanged();
+        const accepted = await this.hooks.onChanged();
+        if (this.key === key && accepted !== false) this.seenMtime = m;
         return;
       }
       this.seenMtime = m;

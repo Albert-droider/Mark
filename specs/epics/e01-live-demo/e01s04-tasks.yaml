@@ -1,0 +1,56 @@
+type: tasks
+context: Resume the reader release after the interrupted audit
+story: e01s04
+baseline: 90f89e7
+status: implementing
+plan: specs/epics/e01-live-demo/e01s04-audit-remediation.md
+tasks:
+  - id: e01s04t01
+    title: Record the current frontend, build and native baseline
+    status: passing
+    verify: npm test && npm run build && cargo test --locked --manifest-path src-tauri/Cargo.toml
+  - id: e01s04t02
+    title: Cover keyboard and navigation routing through public events and fix reproduced failures
+    status: passing
+    verify: npm test -- src/__tests__/reader-shortcuts.test.ts src/__tests__/reader-navigation.test.ts
+    evidence: 10 keyboard and 17 navigation tests; both roles have 100 percent function coverage
+  - id: e01s04t03
+    title: Verify browser storage failure and long-history behavior in Chromium
+    status: passing
+    verify: node scripts/document-storage-smoke.mjs && node scripts/reader-latency-smoke.mjs --history
+    evidence: 15 actual storage checks; 257 versions with 21ms dialog p95 across 25 samples
+  - id: e01s04t04
+    title: Repeat functional gates and record measured coverage
+    status: passing
+    verify: npm run test:coverage && npm run build && cargo test --locked --manifest-path src-tauri/Cargo.toml
+    evidence: specs/verifications/e01s04-gates.json
+    browser_evidence: specs/verifications/e01s04-browser-gates.json
+  - id: e01s04t05
+    title: Resolve history-budget and external-writer product decisions
+    status: passing
+    verify: Confirm decisions with the owner before changing storage policy
+    evidence: Owner m00282 accepts the recommendation in m00281; policy recorded in the remediation plan
+  - id: e01s04t08
+    title: Enforce the approved budget in browser transactions before writes or pruning
+    status: implementing
+    verify: node scripts/document-storage-smoke.mjs
+  - id: e01s04t09
+    title: Enforce the approved native budget and retain best-effort conflict protection
+    status: pending
+    verify: cargo test --locked --manifest-path src-tauri/Cargo.toml versions
+  - id: e01s04t10
+    title: Persist the budget setting and show early warnings without losing pending edits
+    status: pending
+    verify: npm test -- src/__tests__/document-session.test.ts src/__tests__/store.test.ts src/__tests__/document-budget.test.ts && npm run build
+  - id: e01s04t11
+    title: Repeat all functional and browser gates after the storage policy change
+    status: pending
+    verify: npm run test:coverage && npm run build && cargo test --locked --manifest-path src-tauri/Cargo.toml && node scripts/document-storage-smoke.mjs
+  - id: e01s04t06
+    title: Close the complete strict audit and obtain native acceptance
+    status: blocked
+    verify: specs/verifications/AUDIT-e01-s03.md
+  - id: e01s04t07
+    title: Request independent review, commit and push the feature branch
+    status: blocked
+    verify: Run only after all applicable audit and acceptance gates pass

@@ -1,0 +1,59 @@
+{
+  "type": "performance_evidence",
+  "context": "e01s02 metadata-only synthetic input benchmark; not full reader latency",
+  "measuredAt": "2026-10-08T17:30:54.951Z",
+  "node": "v24.14.0",
+  "platform": "win32",
+  "architecture": "x64",
+  "cases": [
+    {
+      "mebibytes": 1,
+      "samples": 20,
+      "openedMs": 21.309799999999996,
+      "before": {
+        "p50Ms": 4.019299999999987,
+        "p95Ms": 7.542700000000025
+      },
+      "after": {
+        "p50Ms": 0.0004000000000132786,
+        "p95Ms": 0.031999999999982265
+      },
+      "inputBudgetMs": 16,
+      "passed": true
+    },
+    {
+      "mebibytes": 5,
+      "samples": 20,
+      "openedMs": 26.4812,
+      "before": {
+        "p50Ms": 14.58140000000003,
+        "p95Ms": 27.225000000000023
+      },
+      "after": {
+        "p50Ms": 0.00010000000008858478,
+        "p95Ms": 0.0015999999999394277
+      },
+      "inputBudgetMs": 16,
+      "passed": true
+    },
+    {
+      "mebibytes": 16,
+      "samples": 20,
+      "openedMs": 69.83260000000007,
+      "before": {
+        "p50Ms": 89.26950000000033,
+        "p95Ms": 137.52689999999984
+      },
+      "after": {
+        "p50Ms": 0.00010000000020227162,
+        "p95Ms": 0.0020999999997002305
+      },
+      "inputBudgetMs": 16,
+      "passed": true
+    }
+  ],
+  "limits": [
+    "No browser typing or startup measurement.",
+    "No version-storage, renderer, or end-to-end latency measurement."
+  ]
+}

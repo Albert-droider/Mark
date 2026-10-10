@@ -1,5 +1,6 @@
 import { el } from "./util";
 import { ActionPopover } from "./action-popover";
+import { icon } from "./icons";
 import { exportText, type TextExportKind } from "./export-text";
 import { agentContext, tableCsv, type SourceBlock, type ShareSource } from "./share";
 
@@ -11,7 +12,7 @@ export function attachShareActions(root: HTMLElement, blocks: SourceBlock[], sou
     const element = elements.find(el => el.dataset.markBlock === block.id);
     if (!element) continue;
     const tools = el("div", { class: "block-actions", "data-reader-ui": "true" });
-    const trigger = el("button", { class: "btn share-trigger", type: "button", "aria-label": `Share ${block.kind}` }, [`Share ${block.kind} ▾`]);
+    const trigger = el("button", { class: "icon-btn share-trigger", type: "button", title: `Share ${block.kind}`, "aria-label": `Share ${block.kind}` }, [icon("clipboard")]);
     const run = (label: string, className: string, action: () => Promise<void>): HTMLButtonElement => {
       const button = el("button", { class: `btn ${className}`, type: "button" }, [label]);
       button.addEventListener("click", event => {
@@ -30,6 +31,9 @@ export function attachShareActions(root: HTMLElement, blocks: SourceBlock[], sou
       run("Download Markdown…", "share-markdown", () => save(block.markdown, "markdown")),
       run("Download context for agent…", "share-context", async () => save(await agentContext(source, block), "context")),
     ];
+    if (block.kind === "code") buttons.unshift(run("Copy code", "share-code", async () => {
+      await navigator.clipboard.writeText(element.querySelector("code")?.textContent ?? ""); report("Code copied. No upload was made.");
+    }));
     if (block.kind === "table") buttons.splice(2, 0, run("Download CSV…", "share-csv", async () => {
       const table = element.querySelector("table");
       if (!table) throw new Error("Table unavailable");
@@ -37,7 +41,12 @@ export function attachShareActions(root: HTMLElement, blocks: SourceBlock[], sou
     }));
     const menu = new ActionPopover(trigger, buttons, `actions-${block.id}`, true);
     menu.root.classList.add("reader-share-actions");
-    menus.push(menu); tools.append(menu.wrap); element.prepend(tools);
+    menus.push(menu);
+    if (block.kind === "code") {
+      const copy = element.querySelector(".code-bar .code-copy");
+      if (copy) copy.replaceWith(menu.wrap);
+      else element.querySelector(".code-bar")?.append(menu.wrap);
+    } else { tools.append(menu.wrap); element.append(tools); }
   }
   return () => { for (const menu of menus) menu.dispose(); };
 }

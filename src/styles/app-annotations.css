@@ -1,0 +1,115 @@
+/* Selection popover ------------------------------------------------------ */
+.sel-pop {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 76px);
+  overflow: auto;
+  padding: 6px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+.sel-pop[hidden] { display: none; }
+.sel-row { display: flex; align-items: center; gap: 4px; }
+.sel-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.sel-swatch:hover { transform: scale(1.08); }
+.sel-yellow { background: var(--hl-yellow, #f3e2a4); }
+.sel-green { background: var(--hl-green, #d7e8c8); }
+.sel-pink { background: var(--hl-pink, #f3d0d4); }
+.sel-pop:not(.existing) .sel-remove { display: none; }
+.sel-row .btn { height: var(--control-height); padding: 0 10px; font-size: var(--ui-size); }
+.sel-status { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted); }
+
+/* Optional recovery surface; does not affect article measure or pagination. */
+.annotation-toggle { position: fixed; top: 58px; right: 12px; z-index: 45; height: 28px; font-size: 12px; }
+.annotation-toggle.has-storage-issue { border-color: #b06b18; }
+.annotation-recovery {
+  position: fixed; top: 94px; right: 12px; bottom: 16px; z-index: 60;
+  width: min(390px, calc(100vw - 24px)); overflow: auto; padding: 16px;
+  background: var(--chrome-bg); color: var(--chrome-fg); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
+}
+.annotation-recovery[hidden] { display: none; }
+.recovery-head, .recovery-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.recovery-head { justify-content: space-between; }
+.recovery-head h2 { font-size: 16px; margin: 0; }
+.recovery-item { border-top: 1px solid var(--border); padding: 12px 0; }
+.recovery-item small, .recovery-help { color: var(--muted); }
+.recovery-item blockquote { margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--border); }
+.recovery-note { white-space: pre-wrap; }
+.recovery-help { font-size: 11px; }
+.recovery-warning { padding: 10px; border: 1px solid #b06b18; border-radius: 6px; margin: 12px 0; }
+.recovery-actions .btn { font-size: 12px; padding: 0 8px; }
+.note-tip {
+  z-index: 75;
+  max-width: min(240px, calc(100vw - 24px));
+  padding: 5px 8px 6px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.35;
+  user-select: none;
+}
+.note-tip[hidden] { display: none !important; }
+.note-tip[data-color="yellow"] { border-left: 3px solid #e7c56a; }
+.note-tip[data-color="green"] { border-left: 3px solid #8fbf7a; }
+.note-tip[data-color="pink"] { border-left: 3px solid #e0a0b0; }
+.note-tip-kicker {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.note-tip-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  max-height: calc(1.35em * 4);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.sel-note-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px;
+}
+:root {
+  --hl-yellow: #f3e2a4;
+  --hl-green: #d7e8c8;
+  --hl-pink: #f3d0d4;
+}
+[data-mode="dark"] {
+  --hl-yellow: color-mix(in srgb, #e7c56a 42%, var(--paper));
+  --hl-green: color-mix(in srgb, #8fbf7a 36%, var(--paper));
+  --hl-pink: color-mix(in srgb, #e0a0b0 36%, var(--paper));
+}
+

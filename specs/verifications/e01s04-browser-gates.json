@@ -1,0 +1,114 @@
+{
+  "type": "verification",
+  "context": "e01s04 actual Chrome regressions; isolated owned browser profiles",
+  "measuredAt": "2026-10-09T15:09:48.590Z",
+  "results": [
+    {
+      "script": "scripts/document-storage-smoke.mjs",
+      "exit": 0,
+      "elapsedMs": 3468,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-browser-dHOSOo\\document-storage-smoke.mjs.log",
+      "data": {
+        "checks": [
+          "new version is compressed",
+          "compression reduces the stored source bytes",
+          "read restores exact Markdown and Unicode",
+          "original version is still available",
+          "metadata schema is active",
+          "a stale writer cannot overwrite the acknowledged source",
+          "failed version writes roll back the source and metadata",
+          "save and list never scan full snapshot bodies",
+          "missing metadata blocks both listing and saving without acknowledgement",
+          "corrupt metadata blocks both listing and saving",
+          "invalid UTF-8 snapshot data fails rather than returning replacement characters",
+          "an unsupported working record is not silently replaced",
+          "rejected corrupt-storage writes preserve source and version count",
+          "a corrupt legacy migration aborts the schema upgrade without rewriting its snapshot",
+          "schema upgrade reads legacy sources without rewriting their snapshots"
+        ],
+        "result": {
+          "codec": "gzip",
+          "bytes": 340012,
+          "storedBytes": 901,
+          "databaseVersion": 2,
+          "exact": true,
+          "versions": 2,
+          "originalExact": true
+        },
+        "artifacts": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-4ioNyf"
+      }
+    },
+    {
+      "script": "scripts/reader-notes-smoke.mjs",
+      "exit": 0,
+      "elapsedMs": 10195,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-browser-dHOSOo\\reader-notes-smoke.mjs.log",
+      "data": {
+        "passed": 14,
+        "path": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-tiDoEQ\\results.json",
+        "snapshot": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-tiDoEQ\\subtle-note-hover.png",
+        "compact": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-tiDoEQ\\subtle-note-compact.png"
+      }
+    },
+    {
+      "script": "scripts/live-demo-smoke.mjs",
+      "exit": 0,
+      "elapsedMs": 30045,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-browser-dHOSOo\\live-demo-smoke.mjs.log",
+      "data": {
+        "dir": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-GzZpbY",
+        "passed": 38,
+        "checks": [
+          "Primary reader owns enabled checkpoints without a live-copy route",
+          "Initial working document is acknowledged in real IndexedDB",
+          "Opening captures one initial version",
+          "Reader task click retains keyboard focus and shows pending changes",
+          "No per-keystroke or task-click write is claimed as saved",
+          "Five-second autosave writes the checked Markdown",
+          "Changed source adds a version",
+          "Idle save intervals do not add duplicate snapshots",
+          "Double-click edits the actual cell, without a form or second table",
+          "Typing stays in the same table and Enter finishes editing",
+          "Cell text is persisted as escaped Markdown",
+          "In-place table editing leaves unrelated Markdown unchanged",
+          "Code has one compact clipboard SVG exactly in the former Copy slot",
+          "Table clipboard is below the content",
+          "Real table Markdown download includes the current edit",
+          "Real CSV download includes current cell text",
+          "Agent context binds the edited block to the same current-source hash, excluding the book",
+          "Whole-document export contains current task and cell changes",
+          "A fresh app recovers checked and cell-edited working Markdown from the original upload identity",
+          "History previews the original Markdown without changing the reader",
+          "Cancelled restore keeps the current document",
+          "Confirmed restore becomes a new saved version, not a history deletion",
+          "Restore retains original, checked and cell-edited versions",
+          "The normal reader has no raw-editor or standalone-note creation command",
+          "Failed writes are visible and the changed task remains on screen",
+          "Failed autosave does not acknowledge or replace the persisted document",
+          "Current Markdown can still be exported after a failed save",
+          "A failed save prevents file switching and retains unsaved source",
+          "Next interval retries the same document and acknowledges its exact source",
+          "Book still turns pages with editable checkpoints and table content",
+          "Version history and close/restore controls fit 1200×820",
+          "Reader chrome fits 1200×820 without an editor pane",
+          "Version history and close/restore controls fit 800×600",
+          "Reader chrome fits 800×600 without an editor pane",
+          "Version history and close/restore controls fit 460×340",
+          "Reader chrome fits 460×340 without an editor pane",
+          "Browser smoke never rewrites the public source file",
+          "No unhandled browser exceptions"
+        ]
+      }
+    },
+    {
+      "script": "scripts/reader-smoke.mjs",
+      "exit": 0,
+      "elapsedMs": 10132,
+      "log": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-e01s04-browser-dHOSOo\\reader-smoke.mjs.log",
+      "data": {
+        "passed": 21,
+        "path": "C:\\Users\\vandi\\AppData\\Local\\Temp\\mark-reader-smoke-BR3pFA\\results.json"
+      }
+    }
+  ]
+}

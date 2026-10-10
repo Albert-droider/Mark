@@ -47,6 +47,8 @@ export interface Settings {
   lineHeight: number;
   contentWidth: number;
   padding: number;
+  /** Managed source and history budget for each document, in MiB. */
+  documentBudgetMiB: number;
   accent: string;
   custom: CustomColors;
   render: RenderOptions;
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lineHeight: 1.7,
   contentWidth: 880,
   padding: 24,
+  documentBudgetMiB: 1024,
   accent: "#171717",
   custom: {
     bg: "#ffffff",

@@ -7,7 +7,7 @@ export type AnchorMatch = { status: "found"; start: number; end: number }
   | { status: "missing" | "ambiguous" };
 
 const BLOCKS = "p,pre,h1,h2,h3,h4,h5,h6,li,td,th,figcaption,div";
-const IGNORE = "button,script,style,.katex-mathml";
+const IGNORE = "button,script,style,.katex-mathml,.reader-note,[data-reader-ui]";
 
 /** Inline formatting shares a text run; unrelated blocks never form a quote. */
 export function indexText(root: HTMLElement): TextIndex {

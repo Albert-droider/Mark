@@ -1,0 +1,86 @@
+/* Audio + karaoke -------------------------------------------------------- */
+.audio-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 14px;
+  background: var(--chrome-bg);
+  border-top: 1px solid var(--chrome-border);
+}
+.audio-bar[hidden] { display: none; }
+.audio-el { display: none; }
+.audio-label {
+  flex: 0 1 140px;
+  max-width: 140px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.audio-bar .audio-play {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border: none;
+}
+.audio-bar .audio-play:hover { background: var(--primary); filter: brightness(1.08); }
+.audio-bar .audio-back,
+.audio-bar .audio-forward {
+  height: 32px;
+  padding: 0 8px;
+  gap: 2px;
+  color: var(--chrome-fg);
+}
+.audio-step { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.audio-seek-wrap { flex: 1 1 auto; min-width: 72px; display: flex; align-items: center; }
+.audio-seek { width: 100%; }
+.audio-time {
+  flex: 0 0 auto;
+  font-family: var(--code-font);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.audio-speed { flex: 0 0 auto; height: 32px; width: auto; padding: 0 8px; font-size: 12px; }
+.audio-vol-wrap { flex: 0 0 88px; display: flex; align-items: center; }
+.audio-vol { width: 100%; }
+.audio-follow {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+::highlight(karaoke) {
+  background-color: #e7c56a;
+  color: #14110e;
+}
+
+@media (max-width: 720px) {
+  .file-meta { display: none; }
+  .settings-panel { width: 100vw; }
+  .outline.open {
+    position: absolute;
+    z-index: 25;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(280px, 86vw);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel, .read-progress > span, .sheet .content { transition: none; }
+}
+

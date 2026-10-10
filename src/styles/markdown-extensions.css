@@ -1,0 +1,117 @@
+/* Callouts (:::tip etc.) ------------------------------------------------- */
+.markdown-body .callout {
+  margin: 0 0 1em;
+  padding: 0.7em 1em;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--hover, transparent);
+}
+.markdown-body .callout-head { font-weight: 700; margin-bottom: 0.3em; text-transform: capitalize; }
+.markdown-body .callout-warning { border-left-color: #d97706; background: color-mix(in srgb, #d97706 12%, transparent); }
+.markdown-body .callout-danger { border-left-color: #dc2626; background: color-mix(in srgb, #dc2626 12%, transparent); }
+.markdown-body .callout-success { border-left-color: #16a34a; background: color-mix(in srgb, #16a34a 12%, transparent); }
+.markdown-body .callout-info { border-left-color: var(--link); background: color-mix(in srgb, var(--link) 10%, transparent); }
+.markdown-body blockquote.callout { color: var(--fg); }
+.markdown-body blockquote.callout::before {
+  content: attr(data-alert);
+  display: block;
+  font-weight: 650;
+  margin-bottom: 0.35em;
+}
+.markdown-body blockquote.callout > p:empty { display: none; margin: 0; }
+
+/* Details (:::details) --------------------------------------------------- */
+.markdown-body details { margin: 0 0 1em; padding: 0.6em 1em; border: 1px solid var(--border); border-radius: 8px; }
+.markdown-body details > summary { cursor: pointer; font-weight: 650; }
+
+/* Math ------------------------------------------------------------------- */
+.markdown-body .texmath, .markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }
+.markdown-body .katex { font-size: 1.05em; }
+
+/* Plain text (text renderer) -------------------------------------------- */
+/* Diagrams, charts, progress plans -------------------------------------- */
+.markdown-body .artifact {
+  margin: 0 0 1em;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper, var(--bg)) 86%, var(--fg));
+  break-inside: avoid;
+}
+.markdown-body .artifact-label {
+  font-family: var(--ui-font, "Segoe UI", sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.markdown-body .artifact-src { display: none; }
+.markdown-body .artifact-slot { max-height: 24rem; overflow: auto; }
+.markdown-body .artifact-slot svg { max-width: 100%; height: auto; display: block; }
+.markdown-body .artifact-error { margin: 0; color: var(--muted); font-size: 0.9em; }
+.markdown-body .chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+  font-family: var(--ui-font, "Segoe UI", sans-serif);
+  font-size: 12px;
+  color: var(--fg);
+}
+.markdown-body .chart-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.markdown-body .chart-track {
+  height: 8px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink, var(--fg)) 16%, transparent);
+  overflow: hidden;
+}
+.markdown-body .chart-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink, var(--heading));
+}
+.markdown-body .chart-value { font-variant-numeric: tabular-nums; color: var(--ink, var(--heading)); font-weight: 650; }
+.markdown-body .chart-line { width: 100%; height: auto; }
+.markdown-body .chart-line-stroke { fill: none; stroke: var(--ink, var(--heading)); stroke-width: 2; }
+.markdown-body .chart-dot { fill: var(--ink, var(--heading)); }
+.markdown-body .chart-axis { fill: var(--muted); font-size: 10px; font-family: var(--ui-font, "Segoe UI", sans-serif); }
+.markdown-body .chart-pie { display: flex; align-items: center; gap: 16px; }
+.markdown-body .pie { width: 92px; height: 92px; border-radius: 50%; flex: none; }
+.markdown-body .pie-legend { list-style: none; margin: 0; padding: 0; font-family: var(--ui-font, "Segoe UI", sans-serif); font-size: 12px; }
+.markdown-body .pie-legend li { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.markdown-body .pie-legend i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+.markdown-body .pie-legend b { margin-left: auto; font-weight: 650; color: var(--ink, var(--heading)); }
+
+/* Reader marks and notes. The quote stays in the sentence; the note opens from it. */
+.markdown-body mark.hl {
+  background: var(--hl-yellow, #f3e2a4);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.08em;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.markdown-body mark.hl-green { background: var(--hl-green, #d7e8c8); }
+.markdown-body mark.hl-pink { background: var(--hl-pink, #f3d0d4); }
+.markdown-body mark.has-note {
+  cursor: pointer;
+  box-shadow: inset 0 -1.5px 0 var(--ink, currentColor);
+}
+
+.markdown-body .plain-text {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-family: var(--code-font);
+  font-size: 0.9em;
+  line-height: var(--line-height);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg);
+}
+

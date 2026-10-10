@@ -1,0 +1,12 @@
+/* Decoration must not change glyph metrics, line boxes or column pagination. */
+mark.reader-note-mark { background: transparent; color: inherit; padding: 0; border: 0; font: inherit; line-height: inherit; text-decoration-line: underline; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; }
+mark.reader-note-mark:focus-visible { outline: 1px dotted var(--accent); outline-offset: 2px; }
+.reader-note-popup { position: fixed; z-index: 160; box-sizing: border-box; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); box-shadow: 0 8px 32px rgba(0,0,0,.14); overflow: auto; font: 14px/1.5 var(--ui-font); }
+.reader-note-head { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.reader-note-head > span { flex: 1; font-weight: 600; }
+.reader-note-head button { min-height: 28px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+.reader-note-head button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.reader-note-input { display: block; box-sizing: border-box; width: 100%; min-height: 88px; max-height: 40vh; margin: 10px 0 0; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg); font: 14px/1.6 var(--ui-font); resize: vertical; overflow-y: auto; }
+.reader-note-input:focus { outline: 1px solid var(--accent); }
+.reader-note-tip { position: fixed; pointer-events: none; white-space: pre-wrap; max-width: min(340px, calc(100vw - 16px)); max-height: min(240px, calc(100vh - 16px)); padding: 10px 12px; overflow: hidden; overflow-wrap: anywhere; color: var(--fg); font: 13px/1.5 var(--ui-font); }
+@media print { .reader-note-popup, .reader-note-tip { display: none !important; } }

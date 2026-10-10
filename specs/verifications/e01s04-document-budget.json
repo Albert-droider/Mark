@@ -1,0 +1,52 @@
+{
+  "type": "browser_evidence",
+  "context": "e01s04 owner-approved budget: warning, refusal, pending export and retry in the actual reader",
+  "generatedAt": "2026-10-09T17:14:48.433Z",
+  "runtime": {
+    "node": "v24.14.0"
+  },
+  "passed": true,
+  "checks": [
+    "the actual reader uses the configured byte limit",
+    "a visible warning precedes the limit while both protected versions remain intact",
+    "an over-budget autosave retains the pending reader edit, acknowledged source, original and latest snapshots",
+    "an actual new-file Markdown export preserves every byte of the unsaved source after refusal",
+    "raising the limit lets the five-second retry acknowledge the exact source without deleting history"
+  ],
+  "warning": {
+    "storage": {
+      "usedBytes": 54687018,
+      "limitBytes": 67108864,
+      "warning": true
+    },
+    "versions": 3,
+    "label": "10 words · 1 min · Saved locally · Storage 82%",
+    "message": "Saved with version history. Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+    "notice": "Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+    "visible": true,
+    "originalExact": true
+  },
+  "refusal": {
+    "label": "10 words · 1 min · Not saved · Storage 82%",
+    "message": "Not saved: Error: Document storage budget exceeded. Increase the limit in Settings or export Markdown. Existing source and history were not changed. Keep MARK open or export Markdown before closing. Document storage is 82% full. Increase the budget in Settings or export Markdown. Protected history is not removed to make room.",
+    "pendingChecked": true,
+    "sourceUnchanged": true,
+    "historyUnchanged": true,
+    "originalsExact": true,
+    "latestExact": true
+  },
+  "retry": {
+    "exact": true,
+    "versions": 4,
+    "storage": {
+      "usedBytes": 67323636,
+      "limitBytes": 134217728,
+      "warning": false
+    },
+    "label": "9 words · 1 min · Saved locally"
+  },
+  "limits": [
+    "Owned Chromium profile with a synthetic near-16-MiB document; not packaged native acceptance.",
+    "Counts managed source, snapshot and metadata data, not database/filesystem allocation or temporary export overhead."
+  ]
+}

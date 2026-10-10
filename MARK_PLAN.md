@@ -1,8 +1,8 @@
 # MARK — van reader naar lees- en denkwerkplek
 
-**Status:** stappen 0.1–0.4 geïmplementeerd; onafhankelijke review van dat fundament: OK met kanttekeningen. De nieuwe reader/editor-shell heeft automatische/browser-verificatie en parent self-review, geen nieuwe onafhankelijke review. Native handmatige acceptatie volgt. Stap 0.5 en de volledige workspace wachten op de keuzes uit §8.
-**Checkpoints:** [reader-fundament](specs/verifications/reader-foundation.md) en [reader/editor-shell](specs/verifications/reader-editor-shell.md).
-**Nieuwe shell:** Attach hersteld, gegroepeerde topbar, afzonderlijk Markdown-schrijfvlak, vrije documentconcepten, bronkopie bewerken en expliciet Markdown/CSV/agentcontext delen. Dit brengt delen van 1.2/1.3 naar voren; een volledig notebook, bibliotheek, zoekindex of board is nog niet gebouwd.
+**Status:** fundament 0.1–0.4 en reader/editor-shell zijn eerdere checkpoints. De eigenaar koos daarna voor direct bewerkbare Markdown met versieopslag. Die interacties hebben nu browser- en echte native verificatie. De strikte zelfaudit is **NOT READY**; daarom geen nieuwe onafhankelijke review of commit. Stap 0.5 en de volledige workspace wachten op §8.
+**Checkpoints:** [reader-fundament](specs/verifications/reader-foundation.md), [reader/editor-shell](specs/verifications/reader-editor-shell.md), [directe reader](specs/verifications/e01s02-in-place-reader.md), [subtiele bestandsnotities](specs/verifications/e01s03-reader-notes.md) en [strikte audit](specs/verifications/AUDIT-e01-s03.md).
+**Huidige reader:** checkpoints afvinken, typen in dezelfde tabelcel, onderstreepte passages met hover-notities, vijfseconden-autosave, dertigdaagse versies met behoud van de nieuwste, en actuele Markdown/CSV/agentcontext delen. Nieuwe notities staan in hetzelfde bestand zonder de leestekst te onderbreken. Geen verplichte bronkopie, apart note-editorpaneel of gewone raw-editormodus. Bibliotheek, volledig notebook, zoekindex en board zijn nog niet gebouwd.
 **Auditbasis:** MARK 0.4.0, `main` op commit `c8fb838`.
 **Doel van dit document:** de afgesproken richting bewaren en de bouw in kleine, toetsbare stappen voortzetten.
 
@@ -42,7 +42,7 @@ De hoofd-JS-bundle is circa 1,778 MB ongecomprimeerd / 576 KB gzip. Opstartvertr
 ## 3. Ontwerpcontracten
 
 1. **Eigen werk gaat niet stil verloren.** Concepten overleven popup sluiten, scrollen, bron wisselen en opnieuw starten. Een opslagfout geeft een zichtbare, herstelbare toestand.
-2. **Bronnen blijven standaard ongewijzigd.** MARK schrijft eigen notities en metadata, niet automatisch in het gelezen boek of projectbestand.
+2. **Markdown is eigenaar-goedgekeurd bewerkbaar en geversioneerd.** Desktopwijzigingen gaan naar het geopende Markdown-bestand op een vijfsecondenklok. Versies blijven dertig dagen beschikbaar; de nieuwste versie en het werkbestand worden nooit automatisch verwijderd. Browseruploads gebruiken lokale versies en expliciete export. Dit vervangt het eerdere read-only-contract, niet de nog open workspacekeuze.
 3. **Geen gok als bronverwijzing.** Bewaar quote/context en, in het nieuwe ankermodel, bronpositie met bronversie. Een positie is alleen geldig als versie en geselecteerde tekst overeenkomen. Beoordeel contextmatches over het hele document vóór quote-fallbacks; onopgeloste meervoudige matches worden ambigu, niet willekeurig toegewezen. Bied herstel aan.
 4. **Een notitie bestaat zelfstandig.** Een verdwenen passage verwijdert of verbergt de eigen tekst niet. Vrije notities zonder passage zijn mogelijk.
 5. **Een notitie heeft één identiteit.** Notebook en board verwijzen naar dezelfde notitie. Bewerken werkt overal door; verwijderen van een plaatsing verwijdert niet de notitie.
@@ -103,7 +103,7 @@ Stappen **0.1–0.4 zijn geïmplementeerd**: 130 frontendtests, 9 Rust-tests en 
   - Acceptatie: meerdere boeken blijven beschikbaar; hetzelfde bronbestand wordt niet dubbel geïmporteerd; niet-ondersteunde formaten krijgen uitleg; ontbrekende bron kan worden herkoppeld.
   - verify: `npm test -- src/__tests__/library.test.ts src/__tests__/paths.test.ts src/__tests__/store.test.ts`
 - [ ] **1.2 Reader naast notebook (P1).** Voeg zelfstandig Markdown-schrijven en brongebonden notities toe. Maak 'passage → eigen uitleg → terug naar bron' één directe flow.
-  - Acceptatie: vrije tekst én passage-notities; autosave met status; meerdere bronnen in één notebook; bron blijft ongewijzigd. Toetsenbordbediening en een verborgen werkpaneel werken.
+  - Acceptatie: vrije tekst én passage-notities; autosave met status; meerdere bronnen in één notebook; passage-notities veranderen de bron niet, expliciete reader-edits zijn geversioneerd. Toetsenbordbediening en een verborgen werkpaneel werken.
   - verify: `npm test -- src/__tests__/notebook.test.ts src/__tests__/viewer-highlight.test.ts`
 - [ ] **1.3 Gezamenlijk zoeken en responsive shell (P1).** Zoek over bronnen, passages, notities en code met duidelijke resultaattypen; behoud zoeken binnen het document.
   - Acceptatie: resultaten openen het juiste object/de juiste passage; geen verborgen acties op 460×340; bron/notebook bruikbaar op normale en smalle vensters.

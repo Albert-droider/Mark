@@ -1,0 +1,24 @@
+type: story_tasks
+context: Live Markdown demo following 90f89e7
+story_id: e01s01
+status: superseded
+superseded_by: e01s02
+baseline: 90f89e7
+verification: specs/verifications/e01s01-verify.yaml
+tasks:
+  - id: tasks
+    title: Persist mapped preview task toggles
+    status: passing
+    verify: npm test -- src/__tests__/live-markdown.test.ts src/__tests__/note-editor.test.ts src/__tests__/renderer.test.ts
+  - id: tables
+    title: Edit and clear tables through Markdown
+    status: passing
+    verify: npm test -- src/__tests__/live-markdown.test.ts src/__tests__/note-editor.test.ts
+  - id: artifacts
+    title: Edit artifacts and copy code in preview
+    status: passing
+    verify: npm test -- src/__tests__/live-markdown.test.ts src/__tests__/note-editor.test.ts src/__tests__/artifacts.test.ts
+  - id: demo
+    title: Verify recovery, undo and the living sample
+    status: passing
+    verify: npm test && npm run build && node scripts/reader-smoke.mjs && node scripts/live-demo-smoke.mjs

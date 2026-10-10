@@ -1,0 +1,29 @@
+type: story_tasks
+context: Direct reader editing with owner-approved versioned source writes
+story_id: e01s02
+status: audit_blocked
+baseline: 90f89e7
+report: specs/verifications/e01s02-in-place-reader.md
+audit: specs/verifications/AUDIT-e01-s02.md
+owner_decisions: [m01322, m01385]
+tasks:
+  - id: e01s02t01
+    title: Preserve native Markdown and durable versions during guarded writes
+    status: passing
+    verify: cargo test --manifest-path src-tauri/Cargo.toml --offline
+  - id: e01s02t02
+    title: Persist changes on the five-second clock and flush on lifecycle boundaries
+    status: passing
+    verify: npm test -- src/__tests__/document-session.test.ts
+  - id: e01s02t03
+    title: Edit the actual reader tasks and cells without permanent chrome
+    status: passing
+    verify: npm test -- src/__tests__/in-place-reader.test.ts
+  - id: e01s02t04
+    title: Integrate current Markdown sharing, history and native reader lifecycle
+    status: passing
+    verify: npm test && npm run build && node scripts/live-demo-smoke.mjs
+  - id: e01s02t05
+    title: Close the strict audit failures before independent review or commit
+    status: blocked
+    verify: specs/verifications/AUDIT-e01-s02.md

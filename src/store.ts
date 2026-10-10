@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from "./types";
+import { validDocumentBudgetMiB } from "./document-budget";
 import type { RenderOptions, Settings } from "./types";
 import { explicitDarkTheme, themeFamily } from "./themes";
 import { canonicalPath } from "./util";
@@ -20,6 +21,7 @@ function validSettings(value: unknown): value is Partial<Settings> & { recent?: 
     const v = value[key];
     if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) return false;
   }
+  if (value.documentBudgetMiB !== undefined && !validDocumentBudgetMiB(value.documentBudgetMiB)) return false;
   for (const key of ["themeId", "fontFamily", "codeFontFamily", "accent", "layout"]) {
     if (value[key] !== undefined && typeof value[key] !== "string") return false;
   }
@@ -59,6 +61,9 @@ export function normalizeStored(parsed: Partial<Settings>): Settings {
 }
 
 function merge(base: Settings, patch: Partial<Settings>): Settings {
+  if (patch.documentBudgetMiB !== undefined && !validDocumentBudgetMiB(patch.documentBudgetMiB)) {
+    throw new Error("Invalid document storage budget. Choose 64 to 16384 MiB in Settings.");
+  }
   const raw = patch as Partial<Settings> & { recent?: unknown };
   const { custom, render, ...rest } = raw;
   delete (rest as { recent?: unknown }).recent;
@@ -103,9 +108,9 @@ export function updateSettings(patch: Partial<Settings>): void {
   setSettings(merge(current, patch));
 }
 
-/** Appearance defaults. Recent files live in their own store and stay put. */
+/** Appearance defaults. Storage limits and recent files stay put. */
 export function resetSettings(): void {
-  setSettings(structuredClone(DEFAULT_SETTINGS));
+  setSettings({ ...structuredClone(DEFAULT_SETTINGS), documentBudgetMiB: current.documentBudgetMiB });
 }
 
 export function onSettings(cb: Listener): () => void {

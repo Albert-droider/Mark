@@ -1,6 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
 
-export type IconName = "sun" | "moon" | "settings" | "x" | "play" | "pause" | "skip-back" | "skip-forward" | "notes" | "more" | "search" | "chevron-down";
+export type IconName = "sun" | "moon" | "settings" | "x" | "play" | "pause" | "skip-back" | "skip-forward" | "notes" | "more" | "search" | "chevron-down" | "clipboard";
 
 const PATHS: Record<IconName, string[]> = {
   sun: [
@@ -26,6 +26,7 @@ const PATHS: Record<IconName, string[]> = {
   more: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
   search: ["M21 21l-5-5", "M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"],
   "chevron-down": ["m6 9 6 6 6-6"],
+  clipboard: ["M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3", "M9 2h6v4H9z"],
 };
 
 /** Small stroke icon, same drawing style as the ReUI / Lucide set. */
