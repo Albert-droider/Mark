@@ -1,11 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOTE_HOVER_MS, Viewer } from "../viewer";
-import { getHighlights } from "../highlights";
+import { addHighlight, getHighlights, setGroupNote } from "../highlights";
 import type { LoadedFile } from "../types";
+import * as backup from "../backup";
+import { BACKUP_KEY, LEGACY_KEYS, clearStorageIssue, reportStorageIssue, storageIssues } from "../reader-storage";
 import { canonicalPath } from "../util";
 
 const KEY = "C:/docs/h05.md";
 const QUOTE = "het interactieve dualisme";
+const viewers = new Set<Viewer>();
 
 // jsdom has no layout engine, so Range has no client rect. The viewer only needs
 // *a* rect to place the toolbar; real browsers (and WebView2) provide one.
@@ -21,6 +24,7 @@ function open(): { viewer: Viewer; para: Text } {
     kind: "markdown",
   };
   const viewer = new Viewer();
+  viewers.add(viewer);
   document.body.append(viewer.root);
   viewer.render(file);
   const walker = document.createTreeWalker(viewer.root, NodeFilter.SHOW_TEXT);
@@ -47,7 +51,14 @@ function toolbar(): HTMLElement {
 
 beforeEach(() => {
   localStorage.clear();
+  for (const key of [...LEGACY_KEYS, BACKUP_KEY, "reader", "backup-export", "other-storage"]) clearStorageIssue(key);
   document.querySelectorAll(".sel-pop, .note-tip, .markdown-body").forEach((n) => n.remove());
+});
+afterEach(() => {
+  for (const viewer of viewers) viewer.dispose();
+  viewers.clear();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("viewer highlighting", () => {
@@ -105,6 +116,92 @@ describe("viewer highlighting", () => {
     document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
     expect(toolbar().hidden).toBe(true);
     expect(viewer.root.querySelector("mark.hl")).toBeNull();
+  });
+
+  it("recovers an exact note draft after scrolling and re-opening the passage", () => {
+    const { viewer, para } = open();
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
+    const input = toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement;
+    input.value = "  Important unsaved draft\nsecond line  ";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    viewer.root.dispatchEvent(new Event("scroll", { bubbles: true }));
+    expect(toolbar().hidden).toBe(true);
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
+    expect(input.value).toBe("  Important unsaved draft\nsecond line  ");
+  });
+
+  it("does not replace the note editor when selecting draft text with the keyboard", () => {
+    const { para } = open();
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
+    const input = toolbar().querySelector(".sel-note-input") as HTMLTextAreaElement;
+    input.value = "Selecting my own note";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowLeft", shiftKey: true, bubbles: true }));
+    expect((toolbar().querySelector(".sel-note") as HTMLElement).hidden).toBe(false);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("Selecting my own note");
+  });
+
+  it("keeps the note editor inside a compact viewport after it expands", () => {
+    vi.stubGlobal("innerWidth", 460);
+    vi.stubGlobal("innerHeight", 340);
+    vi.spyOn(Range.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(10, 80, 150, 25));
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(254);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.querySelector<HTMLElement>(".sel-note")?.hidden === false ? 206 : 40;
+    });
+    const { para } = open();
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-note-btn") as HTMLElement).click();
+    expect(Number.parseFloat(toolbar().style.left)).toBe(8);
+    expect(Number.parseFloat(toolbar().style.top)).toBe(113);
+  });
+
+  it("keeps missing-passage notes reachable outside the reading article", () => {
+    const added = addHighlight(canonicalPath(KEY), [{ text: "lost passage", prefix: "", suffix: "" }], "pink");
+    setGroupNote(canonicalPath(KEY), added[0].group, "My explanation must survive.");
+    const { viewer } = open();
+    const toggle = document.querySelector(".annotation-toggle") as HTMLButtonElement;
+    expect(toggle).not.toBeNull();
+    expect(toggle.hidden).toBe(false);
+    toggle.click();
+    const recovery = document.querySelector(".annotation-recovery") as HTMLElement;
+    expect(recovery.hidden).toBe(false);
+    expect(recovery.textContent).toContain("My explanation must survive.");
+    expect(viewer.root.contains(recovery)).toBe(false);
+    expect(viewer.root.textContent).not.toContain("My explanation must survive.");
+  });
+
+  it("clears a failed export warning after retry without clearing other storage failures", async () => {
+    const save = vi.spyOn(backup, "saveReaderBackup")
+      .mockRejectedValueOnce(new Error("Export disk unavailable"))
+      .mockResolvedValueOnce("saved");
+    const { viewer } = open();
+    viewer.onNote = vi.fn();
+    reportStorageIssue(new Error("Another annotation is not saved"), "other-storage");
+    const exportButton = [...document.querySelectorAll<HTMLButtonElement>(".annotation-recovery button")]
+      .find((button) => button.textContent === "Export reader backup")!;
+    (document.querySelector(".annotation-toggle") as HTMLButtonElement).click();
+    exportButton.click();
+    expect(save).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(storageIssues()).toContain("Export disk unavailable"));
+    exportButton.click();
+    await vi.waitFor(() => expect(storageIssues()).not.toContain("Export disk unavailable"));
+    expect(storageIssues()).toContain("Another annotation is not saved");
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports storage errors even without a toast callback", () => {
+    const { para } = open();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Simulated quota", "QuotaExceededError");
+    });
+    select(para, QUOTE);
+    (toolbar().querySelector(".sel-yellow") as HTMLButtonElement).click();
+    expect(document.querySelector(".annotation-recovery")?.textContent).toContain("Backup could not be stored.");
   });
 
   it("shows a note tag only after the pointer has rested, and never inside the page", () => {

@@ -2,6 +2,7 @@ import { DEFAULT_SETTINGS } from "./types";
 import type { RenderOptions, Settings } from "./types";
 import { explicitDarkTheme, themeFamily } from "./themes";
 import { canonicalPath } from "./util";
+import { isRecord, readRaw, readStored, reportStorageIssue, writeStored } from "./reader-storage";
 
 const KEY = "mark.settings.v1";
 const RECENT_KEY = "mark.recent.v1";
@@ -11,14 +12,26 @@ type Listener = (s: Settings) => void;
 const listeners = new Set<Listener>();
 let current: Settings = load();
 
-function load(): Settings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return structuredClone(DEFAULT_SETTINGS);
-    return normalizeStored(JSON.parse(raw) as Partial<Settings>);
-  } catch {
-    return structuredClone(DEFAULT_SETTINGS);
+function validSettings(value: unknown): value is Partial<Settings> & { recent?: string[] } {
+  if (!isRecord(value)) return false;
+  if (value.version !== undefined && (typeof value.version !== "number" || !Number.isInteger(value.version)
+    || value.version < 1 || value.version > DEFAULT_SETTINGS.version)) return false;
+  for (const key of ["fontSize", "lineHeight", "contentWidth", "padding"]) {
+    const v = value[key];
+    if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) return false;
   }
+  for (const key of ["themeId", "fontFamily", "codeFontFamily", "accent", "layout"]) {
+    if (value[key] !== undefined && typeof value[key] !== "string") return false;
+  }
+  if (value.mode !== undefined && !["light", "dark", "system"].includes(String(value.mode))) return false;
+  if (value.custom !== undefined && (!isRecord(value.custom) || Object.values(value.custom).some((v) => typeof v !== "string"))) return false;
+  if (value.render !== undefined && (!isRecord(value.render)
+    || Object.keys(DEFAULT_SETTINGS.render).some((key) => isRecord(value.render) && value.render[key] !== undefined && typeof value.render[key] !== "boolean"))) return false;
+  return value.recent === undefined || validPaths(value.recent);
+}
+function load(): Settings {
+  try { return normalizeStored(readStored(KEY, validSettings, () => ({}))); }
+  catch (error) { reportStorageIssue(error); return structuredClone(DEFAULT_SETTINGS); }
 }
 
 /** Fold old saves into the current settings shape. Safe to call more than once. */
@@ -69,9 +82,10 @@ function pickRender(base: RenderOptions, patch: Partial<RenderOptions> | undefin
 
 function persist(s: Settings): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {
-    /* storage might be unavailable; ignore */
+    readStored(KEY, validSettings, () => ({}));
+    writeStored(KEY, s);
+  } catch (error) {
+    reportStorageIssue(error);
   }
 }
 
@@ -99,10 +113,8 @@ export function onSettings(cb: Listener): () => void {
   return () => listeners.delete(cb);
 }
 
-function parsePathList(raw: string): string[] {
-  const parsed = JSON.parse(raw) as unknown;
-  if (!Array.isArray(parsed)) return [];
-  return parsed.filter((p): p is string => typeof p === "string").slice(0, 25);
+function validPaths(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((p) => typeof p === "string");
 }
 
 /**
@@ -110,59 +122,38 @@ function parsePathList(raw: string): string[] {
  * parse options change; opening a file must not take that path.
  */
 function readRecent(): string[] {
-  try {
-    const own = localStorage.getItem(RECENT_KEY);
-    if (own != null) return parsePathList(own);
-  } catch {
-    return [];
-  }
-  let migrated: string[] = [];
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { recent?: unknown };
-      if (Array.isArray(parsed.recent)) {
-        migrated = parsed.recent.filter((p): p is string => typeof p === "string").slice(0, 25);
-      }
-    }
-  } catch {
-    migrated = [];
-  }
-  try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(migrated));
-  } catch {
-    /* storage might be unavailable; ignore */
-  }
+  if (readRaw(RECENT_KEY) !== null) return readStored(RECENT_KEY, validPaths, () => []).slice(0, 25);
+  const old = readStored<Partial<Settings> & { recent?: string[] }>(KEY, validSettings, () => ({}));
+  const migrated = (old.recent ?? []).slice(0, 25);
+  writeStored(RECENT_KEY, migrated);
   return migrated;
 }
 
-function writeRecent(list: string[]): void {
-  try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 25)));
-  } catch {
-    /* storage might be unavailable; ignore */
-  }
-}
+function writeRecent(list: string[]): void { writeStored(RECENT_KEY, list.slice(0, 25)); }
 
 export function getRecent(): string[] {
-  return readRecent();
+  try { return readRecent(); }
+  catch (error) { reportStorageIssue(error); return []; }
 }
 
 /** Push a path to the front of the recent list (deduplicated, capped). */
 export function pushRecent(path: string): void {
   if (!path) return;
   const key = canonicalPath(path);
-  writeRecent([path, ...readRecent().filter((p) => canonicalPath(p) !== key)]);
+  try { writeRecent([path, ...readRecent().filter((p) => canonicalPath(p) !== key)]); }
+  catch (error) { reportStorageIssue(error); }
 }
 
 export function removeRecent(path: string): void {
   if (!path) return;
   const key = canonicalPath(path);
-  writeRecent(readRecent().filter((p) => canonicalPath(p) !== key));
+  try { writeRecent(readRecent().filter((p) => canonicalPath(p) !== key)); }
+  catch (error) { reportStorageIssue(error); }
 }
 
 export function clearRecent(): void {
-  writeRecent([]);
+  try { readRecent(); writeRecent([]); }
+  catch (error) { reportStorageIssue(error); }
 }
 
 /** A ratio survives font-size and window changes. Old builds stored pixels. */
@@ -173,8 +164,12 @@ export interface ReadingPlace {
 
 type StoredPlace = number | { r: number };
 
+function validPlaces(value: unknown): value is Record<string, StoredPlace> {
+  return isRecord(value) && Object.values(value).every((v) =>
+    typeof v === "number" ? Number.isFinite(v) : isRecord(v) && typeof v.r === "number" && Number.isFinite(v.r));
+}
 function readPlaces(): Record<string, StoredPlace> {
-  return JSON.parse(localStorage.getItem(POS_KEY) || "{}") as Record<string, StoredPlace>;
+  return readStored(POS_KEY, validPlaces, () => Object.create(null) as Record<string, StoredPlace>);
 }
 
 /**
@@ -186,7 +181,8 @@ export function getReadingPlace(key: string): ReadingPlace {
   const empty = { ratio: null, legacyTop: null };
   if (!key) return empty;
   try {
-    const v = readPlaces()[key];
+    const all = readPlaces();
+    const v = Object.hasOwn(all, key) ? all[key] : undefined;
     if (typeof v === "number" && Number.isFinite(v)) {
       return { ratio: null, legacyTop: Math.max(0, Math.round(v)) };
     }
@@ -194,7 +190,8 @@ export function getReadingPlace(key: string): ReadingPlace {
       return { ratio: clamp01(v.r), legacyTop: null };
     }
     return empty;
-  } catch {
+  } catch (error) {
+    reportStorageIssue(error);
     return empty;
   }
 }
@@ -205,9 +202,9 @@ export function setReadingPlace(key: string, ratio: number): void {
     const all = readPlaces();
     all[key] = { r: clamp01(ratio) };
     prunePlaces(all, key);
-    localStorage.setItem(POS_KEY, JSON.stringify(all));
-  } catch {
-    /* storage unavailable; ignore */
+    writeStored(POS_KEY, all);
+  } catch (error) {
+    reportStorageIssue(error);
   }
 }
 
@@ -217,9 +214,9 @@ export function forgetPlace(key: string): void {
     const all = readPlaces();
     delete all[key];
     delete all[canonicalPath(key)];
-    localStorage.setItem(POS_KEY, JSON.stringify(all));
-  } catch {
-    /* storage unavailable; ignore */
+    writeStored(POS_KEY, all);
+  } catch (error) {
+    reportStorageIssue(error);
   }
 }
 
@@ -229,9 +226,9 @@ export function forgetOtherPlaces(keep: string[]): void {
     const all = readPlaces();
     const keepSet = new Set(keep.map((k) => canonicalPath(k)));
     for (const k of Object.keys(all)) if (!keepSet.has(canonicalPath(k))) delete all[k];
-    localStorage.setItem(POS_KEY, JSON.stringify(all));
-  } catch {
-    /* storage unavailable; ignore */
+    writeStored(POS_KEY, all);
+  } catch (error) {
+    reportStorageIssue(error);
   }
 }
 

@@ -1,3 +1,5 @@
+mod backup;
+
 use std::fs;
 use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
@@ -76,7 +78,8 @@ fn read_image_file(path: String) -> Result<String, String> {
 
 fn decode_text(bytes: &[u8]) -> Result<String, String> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        return String::from_utf8(bytes[3..].to_vec()).map_err(|_| "This file is not UTF-8 text.".into());
+        return String::from_utf8(bytes[3..].to_vec())
+            .map_err(|_| "This file is not UTF-8 text.".into());
     }
     if bytes.starts_with(&[0xFF, 0xFE]) {
         return decode_utf16(&bytes[2..], true);
@@ -239,7 +242,8 @@ pub fn run() {
             read_image_file,
             find_audio,
             read_audio_file,
-            read_timing
+            read_timing,
+            backup::export_reader_backup
         ])
         .run(tauri::generate_context!())
         .expect("error while running Mark");

@@ -1,6 +1,13 @@
 import { el } from "./util";
+import { readRaw, ReaderStorageError, reportStorageIssue, writeStored } from "./reader-storage";
 
 const STORAGE_KEY = "mark.outline.v1";
+
+function readOpen(): boolean {
+  const raw = readRaw(STORAGE_KEY);
+  if (raw !== null && raw !== "0" && raw !== "1") throw new ReaderStorageError(STORAGE_KEY, "corrupt", "Contents preference is invalid. It was not replaced; export a backup.");
+  return raw === "1";
+}
 
 /** Contents column. The chrome button stays on the app shell. */
 export class Outline {
@@ -17,7 +24,8 @@ export class Outline {
       el("div", { class: "outline-label" }, ["Contents"]),
       this.list,
     ]);
-    this.open = localStorage.getItem(STORAGE_KEY) === "1";
+    try { this.open = readOpen(); }
+    catch (error) { this.open = false; reportStorageIssue(error); }
     this.root.toggleAttribute("inert", true);
   }
 
@@ -27,7 +35,8 @@ export class Outline {
 
   setOpen(open: boolean): void {
     this.open = open;
-    localStorage.setItem(STORAGE_KEY, open ? "1" : "0");
+    try { readOpen(); writeStored(STORAGE_KEY, open ? 1 : 0); }
+    catch (error) { reportStorageIssue(error); }
   }
 
   /** Show the column only while a document is open and the user left it open. */

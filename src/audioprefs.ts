@@ -1,3 +1,5 @@
+import { isRecord, readStored, reportStorageIssue, writeStored } from "./reader-storage";
+
 // Audio preferences, deliberately outside Settings.
 //
 // updateSettings notifies listeners and App re-renders the document, so a speed or
@@ -29,13 +31,18 @@ const KEY = "mark.audio.v1";
 /** Speeds offered in the player. 1.25-1.5 is the useful range for narrated study text. */
 export const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 
+function validPrefs(value: unknown): value is Partial<AudioPrefs> {
+  if (!isRecord(value) || Object.hasOwn(value, "version")) return false;
+  for (const key of ["speed", "volume", "back", "forward"]) {
+    if (value[key] !== undefined && (typeof value[key] !== "number" || !Number.isFinite(value[key]))) return false;
+  }
+  return value.follow === undefined || typeof value.follow === "boolean";
+}
 let current: AudioPrefs = load();
 
 function load(): AudioPrefs {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...DEFAULT_AUDIO_PREFS };
-    const parsed = JSON.parse(raw) as Partial<AudioPrefs>;
+    const parsed = readStored(KEY, validPrefs, () => ({}));
     const merged = { ...DEFAULT_AUDIO_PREFS, ...parsed };
     // Guard against a hand-edited or corrupted blob: a bad rate makes the audio silent
     // and a bad volume makes it a no-op slider.
@@ -45,7 +52,8 @@ function load(): AudioPrefs {
     merged.forward = sane(merged.forward, DEFAULT_AUDIO_PREFS.forward);
     merged.follow = merged.follow === false ? false : true;
     return merged;
-  } catch {
+  } catch (error) {
+    reportStorageIssue(error);
     return { ...DEFAULT_AUDIO_PREFS };
   }
 }
@@ -65,9 +73,10 @@ export function getAudioPrefs(): AudioPrefs {
 export function setAudioPrefs(patch: Partial<AudioPrefs>): AudioPrefs {
   current = { ...current, ...patch };
   try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* storage unavailable; session-only is fine */
+    readStored(KEY, validPrefs, () => ({}));
+    writeStored(KEY, current);
+  } catch (error) {
+    reportStorageIssue(error);
   }
   return current;
 }

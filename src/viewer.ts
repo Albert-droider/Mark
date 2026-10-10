@@ -11,16 +11,24 @@ import {
   applyHighlights,
   groupAt,
   groupNote,
-  refreshGroup,
+  getHighlights,
+  relinkHighlightGroup,
+  saveHighlightNote,
   removeHighlightGroup,
   setGroupColor,
-  setGroupNote,
   unwrapGroup,
   type HighlightColor,
+  type UnresolvedHighlight,
 } from "./highlights";
+
+import { DraftStore, newDraft, type NoteDraft } from "./drafts";
+import { captureReaderBackup, clearStorageIssue, reportStorageIssue, storageIssues, STORAGE_EVENT } from "./reader-storage";
+import { AnnotationRecovery } from "./recovery";
+import { saveReaderBackup } from "./backup";
 
 /** How long a pointer must rest on a noted word before the tag appears. */
 export const NOTE_HOVER_MS = 2000;
+const POPOVER_MARGIN = 8;
 
 /** Owns the rendered document and click interactions inside it. */
 export class Viewer {
@@ -43,6 +51,12 @@ export class Viewer {
   private noteInput: HTMLTextAreaElement;
   private pendingRange: Range | null = null;
   private pendingGroup: string | null = null;
+  private popAnchor: DOMRect | null = null;
+  private drafts = new DraftStore();
+  private activeDraft: NoteDraft | null = null;
+  private unresolved: UnresolvedHighlight[] = [];
+  private recovery: AnnotationRecovery;
+  private relinkTarget: { fileKey: string; group: string } | null = null;
   /** Read-only note tag. Outside the article, so it cannot change page height or catch the wheel. */
   private tip: HTMLElement;
   private tipText: HTMLElement;
@@ -69,24 +83,35 @@ export class Viewer {
     this.root.addEventListener("pointerover", this.onMarkOver);
     this.root.addEventListener("pointermove", this.onMarkMove);
     this.root.addEventListener("pointerout", this.onMarkOut);
+    this.recovery = new AnnotationRecovery({
+      resume: (draft) => this.resumeDraft(draft),
+      discard: (draft) => {
+        if (window.confirm("Discard this draft? The saved annotation is not removed.")) {
+          this.attempt(() => this.drafts.remove(draft.id, draft.revision));
+          this.refreshRecovery();
+        }
+      },
+      edit: (group) => this.editGroup(group),
+      relink: (group) => {
+        this.relinkTarget = { fileKey: this.key, group };
+        if (this.pendingRange) this.relinkSelection();
+        else {
+          this.recovery.hide();
+          this.onNote?.("Select the correct passage, then choose Attach.");
+        }
+      },
+      export: () => { void this.exportBackup(); },
+    });
+    document.body.append(this.recovery.toggle, this.recovery.root);
+    this.refreshRecovery();
     document.addEventListener("mouseup", this.onMouseUp);
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        this.hideTip();
-        this.hidePop();
-      }
-    });
-    document.addEventListener("scroll", (e) => {
-      this.hideTip();
-      const target = e.target;
-      if (target instanceof Node && this.pop.contains(target)) return;
-      this.hidePop();
-    }, true);
-    window.addEventListener("wheel", () => this.hideTip(), { passive: true, capture: true });
-    window.addEventListener("resize", () => {
-      this.hideTip();
-      this.hidePop();
-    });
+    document.addEventListener("keydown", this.onEscape);
+    document.addEventListener("keyup", this.onKeyboardSelection);
+    document.addEventListener("scroll", this.onScroll, true);
+    document.addEventListener(STORAGE_EVENT, this.onStorageStatus);
+    window.addEventListener("wheel", this.onWheelTip, { passive: true, capture: true });
+    window.addEventListener("resize", this.onResize);
+    window.addEventListener("beforeunload", this.onBeforeUnload);
   }
 
   private get key(): string {
@@ -100,6 +125,9 @@ export class Viewer {
   }
 
   render(file: LoadedFile): void {
+    this.hidePop();
+    this.hideTip();
+    this.relinkTarget = null;
     this.current = file;
     this.imageGen++;
     const renderer = getRenderer(file.kind);
@@ -107,9 +135,7 @@ export class Viewer {
     clear(this.root);
     this.root.innerHTML = html;
     this.root.hidden = false;
-    this.hidePop();
-    this.hideTip();
-    applyHighlights(this.root, this.key);
+    this.updateAnnotations();
   }
 
   rerender(): void {
@@ -117,12 +143,64 @@ export class Viewer {
   }
 
   clear(): void {
+    this.hidePop();
     this.imageGen++;
+    this.artifactGen++;
     this.current = null;
+    this.unresolved = [];
+    this.relinkTarget = null;
     this.root.innerHTML = "";
     this.root.hidden = true;
+    this.hideTip();
+    this.refreshRecovery();
+  }
+
+  dispose(): void {
     this.hidePop();
     this.hideTip();
+    this.imageGen++;
+    this.artifactGen++;
+    document.removeEventListener("mouseup", this.onMouseUp);
+    document.removeEventListener("keydown", this.onEscape);
+    document.removeEventListener("keyup", this.onKeyboardSelection);
+    document.removeEventListener("scroll", this.onScroll, true);
+    document.removeEventListener(STORAGE_EVENT, this.onStorageStatus);
+    window.removeEventListener("wheel", this.onWheelTip, true);
+    window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("beforeunload", this.onBeforeUnload);
+    this.root.removeEventListener("click", this.onClick);
+    this.root.removeEventListener("pointerover", this.onMarkOver);
+    this.root.removeEventListener("pointermove", this.onMarkMove);
+    this.root.removeEventListener("pointerout", this.onMarkOut);
+    this.pop.remove();
+    this.tip.remove();
+    this.recovery.dispose();
+  }
+
+  private onEscape = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") { this.hidePop(); this.hideTip(); this.recovery.hide(); }
+  };
+  private onKeyboardSelection = (event: KeyboardEvent): void => {
+    if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (event.shiftKey && /^(Arrow(Left|Right|Up|Down)|Home|End|PageUp|PageDown)$/.test(event.key)) {
+      this.onMouseUp(new MouseEvent("mouseup"));
+    }
+  };
+  private onScroll = (event: Event): void => {
+    this.hideTip();
+    if (event.target instanceof Node && (this.pop.contains(event.target) || this.recovery.root.contains(event.target))) return;
+    this.hidePop();
+  };
+  private onWheelTip = (): void => this.hideTip();
+  private onResize = (): void => { this.hideTip(); this.hidePop(); };
+  private onStorageStatus = (): void => this.refreshRecovery();
+  private onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (this.drafts.unsaved().length) { event.preventDefault(); event.returnValue = ""; }
+  };
+
+  /** Native close controls also need to warn about session-only drafts. */
+  canClose(): boolean {
+    return !this.drafts.unsaved().length || window.confirm("Some drafts could not be saved. Closing MARK will lose their session copies. Export a backup first. Close anyway?");
   }
 
   /** Draw mermaid fences. Charts and plans are already in the HTML. */
@@ -171,7 +249,11 @@ export class Viewer {
     const removeBtn = el("button", { class: "btn sel-remove", type: "button" }, ["Remove"]);
     removeBtn.addEventListener("mousedown", (e) => e.preventDefault());
     removeBtn.addEventListener("click", () => this.removeMark());
-    row.append(noteBtn, removeBtn);
+    const attach = el("button", { class: "btn sel-relink", type: "button" }, ["Attach"]);
+    attach.hidden = true;
+    attach.addEventListener("mousedown", (e) => e.preventDefault());
+    attach.addEventListener("click", () => this.relinkSelection());
+    row.append(noteBtn, removeBtn, attach);
 
     const noteInput = el("textarea", {
       class: "sel-note-input",
@@ -179,10 +261,12 @@ export class Viewer {
       placeholder: "Note on this passage",
       "aria-label": "Note",
     }) as HTMLTextAreaElement;
+    noteInput.addEventListener("input", () => this.captureDraft());
     const save = el("button", { class: "btn primary sel-save", type: "button" }, ["Save"]);
     save.addEventListener("mousedown", (e) => e.preventDefault());
     save.addEventListener("click", () => this.saveNote());
-    const noteBox = el("div", { class: "sel-note" }, [noteInput, save]);
+    const status = el("p", { class: "sel-status", role: "status", "aria-live": "polite" }, []);
+    const noteBox = el("div", { class: "sel-note" }, [noteInput, status, save]);
     noteBox.hidden = true;
 
     const pop = el("div", { class: "sel-pop", role: "dialog", "aria-label": "Selection" }, [row, noteBox]);
@@ -216,6 +300,7 @@ export class Viewer {
       this.hidePop();
       return;
     }
+    this.hidePop();
     this.pendingRange = range.cloneRange();
     this.pendingGroup = null;
     this.noteBox.hidden = true;
@@ -226,14 +311,29 @@ export class Viewer {
     this.hideTip();
     this.pop.hidden = false;
     this.pop.classList.toggle("existing", existing);
-    const x = Math.min(Math.max(rect.left + rect.width / 2, 120), window.innerWidth - 120);
-    const above = rect.top > 72;
-    this.pop.style.left = `${x}px`;
-    this.pop.style.top = above ? `${rect.top - 8}px` : `${rect.bottom + 8}px`;
-    this.pop.classList.toggle("below", !above);
+    (this.pop.querySelector(".sel-relink") as HTMLElement).hidden = !this.relinkTarget;
+    this.popAnchor = rect;
+    this.placePop();
+  }
+
+  private placePop(): void {
+    const rect = this.popAnchor;
+    if (!rect || this.pop.hidden) return;
+    const margin = POPOVER_MARGIN;
+    const width = this.pop.offsetWidth;
+    const height = this.pop.offsetHeight;
+    const clamp = (value: number, max: number) => Math.max(margin, Math.min(value, max));
+    const left = clamp(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - margin);
+    const above = rect.top - height - margin;
+    const top = clamp(above >= margin ? above : rect.bottom + margin, window.innerHeight - height - margin);
+    this.pop.style.left = `${left}px`;
+    this.pop.style.top = `${top}px`;
   }
 
   private hidePop(): void {
+    if (this.activeDraft && !this.noteBox.hidden && this.noteInput.value !== this.activeDraft.text) this.captureDraft();
+    this.activeDraft = null;
+    this.popAnchor = null;
     this.pop.hidden = true;
     this.noteBox.hidden = true;
     this.pendingRange = null;
@@ -290,12 +390,11 @@ export class Viewer {
         this.tipGroup = null;
         return;
       }
-      const note = groupNote(this.key, group);
-      if (!note) {
-        this.tipGroup = null;
-        return;
-      }
-      this.showTip(mark, note);
+      this.attempt(() => {
+        const note = groupNote(this.key, group);
+        if (!note) { this.tipGroup = null; return; }
+        this.showTip(mark, note);
+      });
     }, NOTE_HOVER_MS);
   }
 
@@ -332,54 +431,145 @@ export class Viewer {
 
   private mark(color: HighlightColor): void {
     if (!this.key) return;
-    if (this.pendingGroup) {
-      setGroupColor(this.key, this.pendingGroup, color);
-      refreshGroup(this.root, this.key, this.pendingGroup);
-      this.hidePop();
-      return;
-    }
-    if (!this.pendingRange) return;
-    const added = addHighlight(this.key, anchorsFromRange(this.pendingRange), color);
-    if (added.length) {
-      applyHighlights(this.root, this.key);
+    if (!this.attempt(() => {
+      if (this.pendingGroup) setGroupColor(this.key, this.pendingGroup, color);
+      else if (this.pendingRange) addHighlight(this.key, anchorsFromRange(this.pendingRange, this.root), color);
+      this.updateAnnotations();
       this.onMarks?.();
-    }
+    })) return;
     window.getSelection()?.removeAllRanges();
     this.hidePop();
   }
 
   private openNote(): void {
-    this.noteBox.hidden = false;
-    this.noteInput.value = this.pendingGroup ? groupNote(this.key, this.pendingGroup) : "";
-    this.noteInput.focus({ preventScroll: true });
+    if (!this.key) return;
+    this.attempt(() => {
+      const group = this.pendingGroup;
+      const anchors = group ? getHighlights(this.key).filter((h) => h.group === group)
+        : this.pendingRange ? anchorsFromRange(this.pendingRange, this.root) : [];
+      if (!group && !anchors.length) return;
+      const previous = this.drafts.list(this.key).find((d) => group ? d.group === group
+        : !d.group && JSON.stringify(d.anchors) === JSON.stringify(anchors));
+      this.activeDraft = previous ?? newDraft(this.key, group, anchors, group ? groupNote(this.key, group) : "");
+      this.noteInput.value = this.activeDraft.text;
+      this.noteBox.hidden = false;
+      this.draftStatus(previous ? "Draft recovered. Save attaches it to the passage." : "Changes are kept as a draft. Save attaches the note.");
+      this.noteInput.focus({ preventScroll: true });
+    });
+  }
+
+  private draftStatus(message: string): void {
+    const status = this.pop.querySelector(".sel-status");
+    if (status) status.textContent = message;
+    this.placePop();
+  }
+  private captureDraft(): void {
+    if (!this.activeDraft) return;
+    this.activeDraft = { ...this.activeDraft, text: this.noteInput.value,
+      revision: this.activeDraft.revision + 1, updatedAt: Date.now() };
+    if (this.attempt(() => this.drafts.save(this.activeDraft!))) this.draftStatus("Draft saved. Save attaches the note.");
+    else this.draftStatus("Not saved: draft is only in this session. Keep MARK open, export, and retry.");
+    this.refreshRecovery();
   }
 
   private saveNote(): void {
-    if (!this.key) return;
-    const text = this.noteInput.value;
-    if (this.pendingGroup) {
-      setGroupNote(this.key, this.pendingGroup, text);
-      refreshGroup(this.root, this.key, this.pendingGroup);
-      this.onMarks?.();
-      this.hidePop();
+    if (!this.activeDraft) return;
+    if (this.activeDraft.text !== this.noteInput.value) this.captureDraft();
+    const draft = this.activeDraft;
+    if (!this.attempt(() => saveHighlightNote(draft.fileKey, draft.group ?? draft.id,
+      draft.group ? null : draft.anchors, draft.text))) {
+      this.draftStatus("Note not saved. Your draft is still available; retry or export.");
       return;
     }
-    if (!this.pendingRange) return;
-    const added = addHighlight(this.key, anchorsFromRange(this.pendingRange), "yellow");
-    if (!added.length) return;
-    setGroupNote(this.key, added[0].group, text);
-    applyHighlights(this.root, this.key);
+    // Commit happened before cleanup. Reusing draft.id prevents duplicates on retry.
+    let removed = false;
+    this.attempt(() => { removed = this.drafts.remove(draft.id, draft.revision); });
+    this.activeDraft = null;
+    this.hidePop();
+    if (this.key === draft.fileKey) this.updateAnnotations();
     window.getSelection()?.removeAllRanges();
     this.onMarks?.();
-    this.hidePop();
+    this.onNote?.(removed ? "Note saved." : "Note saved, but draft cleanup failed. Retry is safe; export before closing.");
+    this.refreshRecovery();
   }
 
   private removeMark(): void {
     if (!this.pendingGroup || !this.key) return;
-    removeHighlightGroup(this.key, this.pendingGroup);
-    unwrapGroup(this.root, this.pendingGroup);
+    const group = this.pendingGroup;
+    if (!this.attempt(() => removeHighlightGroup(this.key, group))) return;
+    unwrapGroup(this.root, group);
     this.onMarks?.();
     this.hidePop();
+    this.updateAnnotations();
+  }
+
+  private attempt(action: () => unknown): boolean {
+    try { action(); return true; }
+    catch (error) {
+      const message = reportStorageIssue(error);
+      this.onNote?.(message);
+      this.refreshRecovery();
+      return false;
+    }
+  }
+  private updateAnnotations(): void {
+    this.unresolved = [];
+    this.attempt(() => { this.unresolved = applyHighlights(this.root, this.key); });
+    this.refreshRecovery();
+  }
+  private refreshRecovery(): void {
+    if (!this.recovery) return;
+    const drafts = this.drafts.list();
+    this.recovery.refresh({ fileKey: this.key, unresolved: this.unresolved, drafts, issues: storageIssues() });
+  }
+
+  private editGroup(group: string): void {
+    this.hidePop();
+    this.pendingGroup = group;
+    this.showPop(new DOMRect(window.innerWidth / 2, 50, 0, 0), true);
+    this.openNote();
+  }
+  private resumeDraft(draft: NoteDraft): void {
+    if (draft.fileKey !== this.key) {
+      this.onNote?.(`Open ${draft.fileKey} first, then resume this draft from Notes & backup.`);
+      if (isTauri && isDocumentPath(draft.fileKey)) this.onOpenFile?.(draft.fileKey);
+      return;
+    }
+    this.hidePop();
+    this.activeDraft = draft;
+    this.pendingGroup = draft.group;
+    this.showPop(new DOMRect(window.innerWidth / 2, 50, 0, 0), !!draft.group);
+    this.noteBox.hidden = false;
+    this.noteInput.value = draft.text;
+    this.draftStatus("Draft recovered. Save attaches it to the passage; export keeps its text if the passage moved.");
+    this.noteInput.focus({ preventScroll: true });
+  }
+  private relinkSelection(): void {
+    const target = this.relinkTarget;
+    if (!target || target.fileKey !== this.key || !this.pendingRange) return;
+    const anchors = anchorsFromRange(this.pendingRange, this.root);
+    if (!anchors.length || !this.attempt(() => relinkHighlightGroup(target.fileKey, target.group, anchors))) return;
+    this.relinkTarget = null;
+    this.hidePop();
+    this.updateAnnotations();
+    this.onMarks?.();
+    this.onNote?.("Passage attached. The original note was kept.");
+  }
+
+  private async exportBackup(): Promise<void> {
+    try {
+      const backup = { ...captureReaderBackup(), sessionDrafts: this.drafts.unsaved() };
+      const result = await saveReaderBackup(JSON.stringify(backup, null, 2));
+      if (result === "cancelled") { this.onNote?.("Backup export cancelled."); return; }
+      clearStorageIssue("backup-export");
+      const action = result === "saved" ? "saved" : "download requested";
+      this.onNote?.(backup.complete ? `Backup ${action}. Keep your source books separately.`
+        : `Partial backup ${action}. Read the errors list: some storage could not be read.`);
+    } catch (error) {
+      const message = reportStorageIssue(error, "backup-export");
+      this.onNote?.(message);
+      this.refreshRecovery();
+    }
   }
 
   private onClick = (e: MouseEvent) => {
@@ -390,13 +580,11 @@ export class Viewer {
     if (group) {
       e.preventDefault();
       e.stopPropagation();
-      this.pendingRange = null;
+      this.hidePop();
       this.pendingGroup = group;
       const mark = target.closest("mark.hl") as HTMLElement;
-      const noted = groupNote(this.key, group);
-      this.noteInput.value = noted;
-      this.noteBox.hidden = !noted;
       this.showPop(mark.getBoundingClientRect(), true);
+      this.openNote();
       return;
     }
 

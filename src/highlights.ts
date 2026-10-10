@@ -6,8 +6,11 @@
 // A highlight is a quote anchor, not a DOM position: {text, prefix, suffix}.
 // Re-rendering rebuilds the document from the markdown source, which invalidates
 // node offsets but not the text itself, so anchors survive theme/font/zoom
-// changes. If the text is edited away the anchor simply does not match and is
-// skipped — nothing else in the document shifts.
+// changes. Missing or uncertain anchors are not painted. Their notes remain
+// available in the recovery panel — nothing else in the document shifts.
+
+import { anchorForSlice, indexText, matchAnchor, slicesFor } from "./anchors";
+import { isRecord, readStored, ReaderStorageError, writeStored } from "./reader-storage";
 
 export const HIGHLIGHT_COLORS = ["yellow", "green", "pink"] as const;
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
@@ -37,29 +40,26 @@ export function newId(): string {
   return `${Date.now().toString(36)}-${counter.toString(36)}`;
 }
 
-function readAll(): Record<string, Highlight[]> {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Highlight[]>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+export function isAnchor(value: unknown): value is Anchor {
+  return isRecord(value) && typeof value.text === "string" && typeof value.prefix === "string"
+    && typeof value.suffix === "string" && (value.note === undefined || typeof value.note === "string");
 }
-
+function validHighlights(value: unknown): value is Record<string, Highlight[]> {
+  return isRecord(value) && Object.values(value).every((list) => Array.isArray(list) && list.every((h: unknown) =>
+    isRecord(h) && typeof h.id === "string" && !!h.id && typeof h.group === "string" && !!h.group
+    && HIGHLIGHT_COLORS.some((color) => color === h.color) && isAnchor(h)));
+}
+function readAll(): Record<string, Highlight[]> {
+  return readStored(KEY, validHighlights, () => Object.create(null) as Record<string, Highlight[]>);
+}
 function writeAll(all: Record<string, Highlight[]>): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {
-    /* storage unavailable; ignore */
-  }
+  writeStored(KEY, all);
 }
 
 export function getHighlights(fileKey: string): Highlight[] {
   if (!fileKey) return [];
-  const list = readAll()[fileKey];
-  return Array.isArray(list) ? list : [];
+  const all = readAll();
+  return Object.hasOwn(all, fileKey) ? all[fileKey] : [];
 }
 
 /** Anchor for a selection slice: the quote plus the text around it. */
@@ -71,14 +71,10 @@ export function quoteFromText(full: string, start: number, end: number): Anchor 
   };
 }
 
-/** Where does this anchor sit in `hay`? Context first (the same phrase can occur
- *  several times), the bare quote as fallback when the text node was reflowed. */
+/** Unique context first; a bare quote is usable only when it is unique. */
 export function locateInText(hay: string, anchor: Anchor): number {
-  if (!anchor.text) return -1;
-  const withContext = anchor.prefix + anchor.text + anchor.suffix;
-  const hit = hay.indexOf(withContext);
-  if (hit >= 0) return hit + anchor.prefix.length;
-  return hay.indexOf(anchor.text);
+  const hit = matchAnchor([{ text: hay, start: 0 }], anchor);
+  return hit.status === "found" ? hit.start : -1;
 }
 
 export function addHighlight(fileKey: string, anchors: Anchor[], color: HighlightColor): Highlight[] {
@@ -89,7 +85,7 @@ export function addHighlight(fileKey: string, anchors: Anchor[], color: Highligh
     .map((a) => ({ ...a, id: newId(), group, color }));
   if (added.length === 0) return [];
   const all = readAll();
-  all[fileKey] = [...getHighlights(fileKey), ...added];
+  all[fileKey] = [...(Object.hasOwn(all, fileKey) ? all[fileKey] : []), ...added];
   writeAll(all);
   return added;
 }
@@ -98,14 +94,42 @@ export function setGroupNote(fileKey: string, group: string, note: string): void
   if (!fileKey || !group) return;
   const trimmed = note.trim();
   const all = readAll();
-  all[fileKey] = getHighlights(fileKey).map((h) => (h.group === group ? { ...h, note: trimmed } : h));
+  const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
+  if (!list.some((h) => h.group === group)) throw new ReaderStorageError(KEY, "write", "This annotation no longer exists. Its draft is still available.");
+  all[fileKey] = list.map((h) => (h.group === group ? { ...h, note: trimmed } : h));
+  writeAll(all);
+}
+
+/** One acknowledged write for both a new highlight and its note. A reserved
+ *  group identity makes retries safe when saving succeeded but draft cleanup did not. */
+export function saveHighlightNote(fileKey: string, group: string, anchors: Anchor[] | null, note: string): void {
+  const all = readAll();
+  const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
+  if (list.some((h) => h.group === group)) {
+    all[fileKey] = list.map((h) => h.group === group ? { ...h, note: note.trim() } : h);
+  } else {
+    if (!anchors?.length) throw new ReaderStorageError(KEY, "write", "This annotation no longer exists. Its draft is still available.");
+    all[fileKey] = [...list, ...anchors.filter((a) => a.text.trim()).map((a) => ({ ...a, id: newId(), group, color: "yellow" as const, note: note.trim() }))];
+  }
+  writeAll(all);
+}
+
+export function relinkHighlightGroup(fileKey: string, group: string, anchors: Anchor[]): void {
+  if (!anchors.length) return;
+  const all = readAll();
+  const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
+  const sample = list.find((h) => h.group === group);
+  if (!sample) throw new ReaderStorageError(KEY, "write", "This annotation no longer exists.");
+  const replacement = anchors.map((a) => ({ ...a, id: newId(), group, color: sample.color, note: sample.note }));
+  all[fileKey] = [...list.filter((h) => h.group !== group), ...replacement];
   writeAll(all);
 }
 
 export function setGroupColor(fileKey: string, group: string, color: HighlightColor): void {
   if (!fileKey || !group) return;
   const all = readAll();
-  all[fileKey] = getHighlights(fileKey).map((h) => (h.group === group ? { ...h, color } : h));
+  const list = Object.hasOwn(all, fileKey) ? all[fileKey] : [];
+  all[fileKey] = list.map((h) => (h.group === group ? { ...h, color } : h));
   writeAll(all);
 }
 
@@ -115,7 +139,7 @@ export function groupNote(fileKey: string, group: string): string {
 
 export function removeHighlightGroup(fileKey: string, group: string): void {
   const all = readAll();
-  const kept = getHighlights(fileKey).filter((h) => h.group !== group);
+  const kept = (Object.hasOwn(all, fileKey) ? all[fileKey] : []).filter((h) => h.group !== group);
   if (kept.length === 0) delete all[fileKey];
   else all[fileKey] = kept;
   writeAll(all);
@@ -127,42 +151,51 @@ export function clearHighlights(fileKey: string): void {
   writeAll(all);
 }
 
-/** Wrap text node ranges in `<mark class="hl">`. Anchors that no longer match are
- *  skipped, never guessed at. */
-export function applyHighlights(root: HTMLElement, fileKey: string): void {
+export interface UnresolvedHighlight {
+  group: string;
+  quote: string;
+  note: string;
+  reason: "ambiguous" | "missing" | "changed" | "overlap";
+}
+
+/** Resolve the untouched text first. Painting must never make a duplicate look
+ *  unique. A selection group is painted together or kept available for recovery. */
+export function applyHighlights(root: HTMLElement, fileKey: string): UnresolvedHighlight[] {
   const list = getHighlights(fileKey);
-  if (list.length === 0) return;
-  for (const h of list) {
-    // Already painted (a repeat of the same phrase elsewhere would otherwise be
-    // wrapped again every time the document is re-rendered).
-    if (root.querySelector(`mark.hl[data-hl-id="${h.id}"]`)) continue;
-    const nodes = textNodes(root);
-    const hit = findAnchor(nodes, h);
-    if (!hit) continue;
-    wrap(hit.node, hit.start, hit.end, h);
+  const groups = new Map<string, Highlight[]>();
+  for (const h of list) groups.set(h.group, [...(groups.get(h.group) ?? []), h]);
+  // Rebuild only our wrappers, preserving inline formatting and document text.
+  const paintedGroups = new Set([...root.querySelectorAll<HTMLElement>("mark.hl")].map((m) => m.dataset.hlGroup ?? ""));
+  for (const group of paintedGroups) unwrapGroup(root, group);
+  const index = indexText(root);
+  const unresolved: UnresolvedHighlight[] = [];
+  const occupied: { start: number; end: number }[] = [];
+  const jobs: { node: Text; start: number; end: number; absolute: number; h: Highlight }[] = [];
+  for (const [group, anchors] of groups) {
+    const matches = anchors.map((h) => ({ h, hit: matchAnchor(index.runs, h) }));
+    let reason: UnresolvedHighlight["reason"] | null = null;
+    if (matches.some((m) => m.hit.status === "ambiguous")) reason = "ambiguous";
+    else if (matches.some((m) => m.hit.status === "missing")) reason = "missing";
+    const found = matches.flatMap((m) => m.hit.status === "found" ? [{ h: m.h, ...m.hit }] : []);
+    for (let i = 1; !reason && i < found.length; i++) {
+      if (found[i].start < found[i - 1].end || index.text.slice(found[i - 1].end, found[i].start).trim()) reason = "changed";
+    }
+    if (!reason && found.some((f) => occupied.some((o) => f.start < o.end && f.end > o.start))) reason = "overlap";
+    if (reason) {
+      unresolved.push({ group, reason, quote: anchors.map((h) => h.text).join(""), note: anchors.find((h) => h.note)?.note ?? "" });
+      continue;
+    }
+    for (const f of found) {
+      occupied.push({ start: f.start, end: f.end });
+      for (const slice of slicesFor(index, f.start, f.end)) {
+        jobs.push({ ...slice, absolute: f.start, h: f.h });
+      }
+    }
   }
-}
-
-function textNodes(root: HTMLElement): Text[] {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const out: Text[] = [];
-  let node = walker.nextNode();
-  while (node) {
-    const text = node as Text;
-    // Do not re-wrap text that a previous highlight already wrapped.
-    const parent = text.parentElement;
-    if (text.data.trim() && !parent?.closest("mark.hl")) out.push(text);
-    node = walker.nextNode();
-  }
-  return out;
-}
-
-function findAnchor(nodes: Text[], anchor: Anchor): { node: Text; start: number; end: number } | null {
-  for (const node of nodes) {
-    const at = locateInText(node.data, anchor);
-    if (at >= 0) return { node, start: at, end: at + anchor.text.length };
-  }
-  return null;
+  // Splitting a text node at the end leaves its earlier offsets intact.
+  jobs.sort((a, b) => b.absolute - a.absolute || b.start - a.start);
+  for (const job of jobs) wrap(job.node, job.start, job.end, job.h);
+  return unresolved;
 }
 
 function markClass(h: Highlight): string {
@@ -198,8 +231,9 @@ function wrap(node: Text, start: number, end: number, h: Highlight): void {
 /** Turn a live selection into one anchor per text node it touches (a selection
  *  can span bold words, links or several paragraphs). Offsets are clamped per
  *  node, so the part of a paragraph before the selection is never included. */
-export function anchorsFromRange(range: Range): Anchor[] {
+export function anchorsFromRange(range: Range, root?: HTMLElement): Anchor[] {
   const out: Anchor[] = [];
+  const index = root ? indexText(root) : null;
   // With an element as the start container the range starts on a child boundary,
   // so every intersecting text node is fully inside the selection.
   let passedStart = range.startContainer.nodeType !== Node.TEXT_NODE;
@@ -216,7 +250,10 @@ export function anchorsFromRange(range: Range): Anchor[] {
       if (!range.intersectsNode(text)) return;
       const start = text === range.startContainer ? range.startOffset : 0;
       const end = text === range.endContainer ? range.endOffset : text.data.length;
-      if (end > start && text.data.slice(start, end).trim()) out.push(quoteFromText(text.data, start, end));
+      if (end > start && text.data.slice(start, end).trim()) {
+        const anchor = index ? anchorForSlice(index, text, start, end) : quoteFromText(text.data, start, end);
+        if (anchor) out.push(anchor);
+      }
       if (text === range.endContainer) finished = true;
       return;
     }

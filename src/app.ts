@@ -307,7 +307,10 @@ export class App {
       };
       paintMax();
       void win.onResized(() => paintMax());
-      void win.onCloseRequested(() => { this.session.flush(); });
+      void win.onCloseRequested((event) => {
+        this.session.flush();
+        if (!this.viewer.canClose()) event.preventDefault();
+      });
       void win.onDragDropEvent((ev) => {
         if (ev.payload.type === "enter" || ev.payload.type === "over") {
           this.dropOverlay.setAttribute("aria-hidden", "false");

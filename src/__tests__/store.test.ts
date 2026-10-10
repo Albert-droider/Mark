@@ -1,13 +1,51 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   getReadingPlace, setReadingPlace, getSettings, setSettings, resetSettings,
   getRecent, pushRecent, removeRecent, normalizeStored,
 } from "../store";
 import { DEFAULT_SETTINGS } from "../types";
+import { storageIssues } from "../reader-storage";
 
 beforeEach(() => {
   localStorage.clear();
   setSettings(structuredClone(DEFAULT_SETTINGS));
+});
+
+afterEach(() => vi.restoreAllMocks());
+
+describe("storage integrity", () => {
+  it.each(["null", "[]", '{"version":99}'])("does not replace unsupported settings: %s", (raw) => {
+    localStorage.setItem("mark.settings.v1", raw);
+    setSettings({ ...getSettings(), fontSize: 20 });
+    expect(localStorage.getItem("mark.settings.v1")).toBe(raw);
+    expect(storageIssues().some((message) => message.includes("mark.settings.v1"))).toBe(true);
+  });
+
+  it("preserves a malformed recent list while still allowing reading", () => {
+    const raw = '["old.md", 42]';
+    localStorage.setItem("mark.recent.v1", raw);
+    expect(() => pushRecent("new.md")).not.toThrow();
+    expect(localStorage.getItem("mark.recent.v1")).toBe(raw);
+  });
+
+  it("preserves an unsupported position shape", () => {
+    const raw = '{"old.md":{"r":"broken"}}';
+    localStorage.setItem("mark.positions.v1", raw);
+    expect(() => setReadingPlace("new.md", 0.4)).not.toThrow();
+    expect(localStorage.getItem("mark.positions.v1")).toBe(raw);
+  });
+
+  it("reports a session-only settings change when persistence fails", () => {
+    const setItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === "mark.settings.v1") throw new DOMException("Full", "QuotaExceededError");
+      setItem.call(this, key, value);
+    });
+    setSettings({ ...getSettings(), fontSize: 23 });
+    expect(getSettings().fontSize).toBe(23);
+    expect(storageIssues().some((message) => message.includes("mark.settings.v1"))).toBe(true);
+    expect(JSON.parse(localStorage.getItem("mark.settings.v1")!).fontSize).not.toBe(23);
+  });
 });
 
 describe("reading position", () => {
